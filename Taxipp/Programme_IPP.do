@@ -70,7 +70,7 @@ global couple 1 /* si on veut faire des couples */
 	global marie 1 /* 1 si marié */
 	global concubin 0 /* 1 si concubin */
 
-global npac 2 /* si on rajouter des pac (inactif pour l'instant) */
+global npac 0 /* si on rajouter des pac (inactif pour l'instant) */
 
 global cadre  1
 global public 0
@@ -91,7 +91,7 @@ if $couple ==0{
 }
 global rev 
 forvalues i = 1 /$nmen {
-	global rev1 =(`i'-1)*${rev_max}/(${nrev}-1)
+	global rev1 =(`i'-1)*${rev_max}/(${nmen}-1)
 	global rev ${rev} ${rev1}
 	}
 global num : list sizeof global(rev)
@@ -116,6 +116,7 @@ replace id_indiv = _n
 
 gen id_con =0 /* "con" deviendra concubin ou conjoint selon le scénario choisi i.e. selon que le couple est marié ou non*/
 gen id_concu = 0
+gen id_conj =0
 
 if $couple !=0{
 	replace id_con = _n-1 if mod(id_indiv,2)==0 
@@ -133,7 +134,7 @@ if $couple == 0{
 	global statut_mat "C" /* celib*/
 }
 if $marie == 1{
-	gen id_conj =id_con
+	replace id_conj =id_con
 	global statut_mat "M" /* marié*/
 
 }
