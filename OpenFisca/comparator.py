@@ -50,9 +50,9 @@ def compare(year = 2006):
 
     # TODO: compare results 
 
-    df = simulation.get_results_dataframe()
+    df = simulation.get_results_dataframe(index_by_code=True)
     print df.to_string()
 
 
 if __name__ == '__main__':
-    compare(2012)
+    compare(2011)
