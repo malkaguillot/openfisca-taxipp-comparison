@@ -93,11 +93,24 @@ replace pension_brut = pension_irpp/(1-${csg_pens_red}) if rfr_irpp_foy_N2>${seu
 replace pension_brut = pension_irpp/(1-${csg_pens_ded}) if rfr_irpp_foy_N2>${seuil_exo_tf_th}+2*(nbp-1)*${seuil_exo_tf_th_demipart} & irpp_net_foy_N2>0
 			
 	* Calcul des allocations chômage brutes
-	
+
+*** Proposition ***
+gen csg_tout = (irpp_net_foy_N2 > 0)
+gen csg_part = (irpp_net_foy_N2 <= 0) & (rfr_irpp_foy_N2 > ${seuil_exo_tf_th}+2*(nbp-1)*${seuil_exo_tf_th_demipart})
+gen csg_exo  = (chom_irpp==0) | ((irpp_net_foy_N2 <= 0) & (rfr_irpp_foy_N2 <= ${seuil_exo_tf_th}+2*(nbp-1)*${seuil_exo_tf_th_demipart}))
+
+gen chom_brut     = chom_irpp 										if csg_exo == 1
+replace chom_brut = chom_irpp/(1-${csg_cho_ded}*(1-${csg_abt_0_4})) if (csg_tout == 1 | csg_part == 1) 
+replace chom_brut = chom_irpp/(1-${csg_cho_ded})					if (csg_tout == 1 | csg_part == 1) & chom_brut > 4*$pss
+drop csg_tout csg_part csg_exo
+***
+/*	
 * Note: on ne prend pas en compte la condition sur revenu activité + chômage >= smic brut après déduction CSG.
 gen chom_brut     = chom_irpp if chom_irpp==0 | rfr_irpp_foy_N2 <= ${seuil_exo_tf_th}+2*(nbp-1)*${seuil_exo_tf_th_demipart}
 replace chom_brut = chom_irpp/(1-${csg_cho_ded}*(1-${csg_abt_0_4})) if rfr_irpp_foy_N2>${seuil_exo_tf_th}+2*(nbp-1)*${seuil_exo_tf_th_demipart} & irpp_net_foy_N2<=0
 replace chom_brut = chom_irpp/(1-${csg_cho_ded}*(1-${csg_abt_0_4})) if rfr_irpp_foy_N2>${seuil_exo_tf_th}+2*(nbp-1)*${seuil_exo_tf_th_demipart} & irpp_net_foy_N2>0
-
-drop inf_smic pension_irpp chom_irpp
+*/
+drop inf_smic 
 rename sal_irpp sal_irpp_old
+rename pension_irpp pension_irpp_old
+rename chom_irpp chom_irpp_old
