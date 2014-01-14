@@ -15,6 +15,7 @@
 	*- élargir le programme pour prendre en compte d'autres types de revenus (chômage, retraite, capital...)
 	*- comprendre pourquoi on ne retombe pas sur sal_irpp pour le public (d'Etat : seule prise en compte dans TAXIPP)
 	*- loyer
+	*- ISF
 	*- mettre que les pacs puissent avoir un revenu
 	
 * PLAN
@@ -31,15 +32,15 @@
 ***********************************
 *******    0.   Préambule   *******
 ***********************************
-
 clear
 set more off
 global taxipp         "P:\TAXIPP\TAXIPP 0.3"
 global taxipp_encours "P:\TAXIPP\TAXIPP 0.3\4-Analyses\Test OF"
 global sources_brutes "P:\TAXIPP\TAXIPP 0.3\1-Sources\Sources brutes"
 global sources_2006   "$taxipp_encours\1-Sources"
-global dofiles        "P:\TAXIPP\TAXIPP 0.3\1-Sources\Dofiles"
-global label          "$dofiles\Labels"
+global dofiles        "$taxipp_encours\3-Programmes"
+global sourcetaxipp   "$taxipp\1-Sources\Dofiles"
+global label          "$sourcetaxipp\Labels"
 global paramdir		  "$taxipp_encours\2-Parametres" 
 global progdir		  "$taxipp\3-Programmes\Modèle" 
 global label03        "$taxipp\3-Programmes\Labels 0.3"
@@ -62,7 +63,7 @@ qui do "$progdir\0_appel_parametres0_3.do"
 	*^^^^^^^*
 	* CHOIX *
 	*^^^^^^^*
-global scenario "_celib"
+global scenario "_couple_concubins_enfant_activite"
 
 global nmen =4
 global nbh_sal = 1820 /* 1607 Temps plein ?*/
@@ -70,19 +71,19 @@ global rev_max = 100000
 global part_rev = 0.6 /* \in [0,1] : part du revenu du FF qui va au déclarant */
 
 global mat "C" /* "M":marié ; "C":célibataire ; "V": veuf ; "D": divorcé */
-global couple 0
+global couple 1
 
-global npac 0 /* si on rajouter des pac (inactif pour l'instant) */
-global age_enf "17 18 20" /* Faire que dim(age_enf) = npac */
+global npac 2 /* si on rajouter des pac */
+global age_enf "1 10" /* Faire que dim(age_enf) = npac */
 /*si enfant à naître : -1 */
 
-global activite_D 1 /* [u'Actif occupé',  u'Chômeur', u'Étudiant, élève',u'Retraité', u'Autre inactif']), default = 4))*/
+global activite_D 0 /* [u'Actif occupé',  u'Chômeur', u'Étudiant, élève',u'Retraité', u'Autre inactif']), default = 4))*/
 global cadre_D  1
 global public_D 0
 global taille_ent_D 20
 global tva_D 1
 
-global activite_C 1 /* [u'Actif occupé',  u'Chômeur', u'Étudiant, élève',u'Retraité', u'Autre inactif']), default = 4))*/
+global activite_C 0 /* [u'Actif occupé',  u'Chômeur', u'Étudiant, élève',u'Retraité', u'Autre inactif']), default = 4))*/
 global cadre_C  0
 global public_C 0
 global taille_ent_C 20
@@ -96,6 +97,10 @@ global f4ba 0
 
 global caseT 1
 global caseEKL 0
+global loyer 1000 /*Annuel ?*/
+global npac_C 1
+
+
 	*^^^^^^^^^^^*
 	* FIN CHOIX *
 	*^^^^^^^^^^^*
@@ -124,7 +129,9 @@ global num : list sizeof global(rev)
 *if ${num}!=(1+${couple})*${nmen} {
 *	disp "Il faut qu'il y ait autant de revenus imposables que d'individus créés : " (1+${couple})*${nmen}
 *}
-
+if $npac == 0{
+	global caseT 0
+}
 ***********************************
 *******  1.	Création base 	*******
 ***********************************
@@ -144,7 +151,7 @@ gen id_conj =0
 gen id_men =0
 gen con1 =0
 gen con2 =0
-
+gen id_fo_concu = 0
 
 if $marie == 1{
 	replace id_conj = _n-1 if mod(id_indiv,2)==0 
@@ -153,6 +160,7 @@ if $marie == 1{
 	replace conj=1 if mod(id_indiv,2)==0 
 	replace id_foy =(_n+1)/2
 	replace id_foy =(_n)/2 if mod(id_indiv,2)==0
+	replace id_men = id_foy
 	replace couple =1
 	replace marie =1
 }
@@ -163,7 +171,8 @@ if $concubin == 1{
 	replace con1 = (mod(id_indiv,2)==1 )
 	replace con2 = (mod(id_indiv,2)==0 )
 	replace id_concu  = _n+1 if mod(id_indiv,2)==1
-	replace id_foy =_n
+	replace id_fo_concu = id_concu
+	replace id_foyf =_n
 	replace id_men =(_n+1)/2
 	replace id_men =(_n)/2 if mod(id_indiv,2)==0
 	replace decl=1
@@ -172,6 +181,7 @@ if ${concubin}==0 & ${marie} == 0{
 	replace couple = 0
 	replace id_foy = _n
 	replace decl = 1
+	replace id_men = id_foyf
 }
 replace age = 38
 if ${couple}==0 & pac>0{ /* Pour forcer caseT = 1 si on est seul adulte avec enfant(s) */
@@ -180,29 +190,46 @@ if ${couple}==0 & pac>0{ /* Pour forcer caseT = 1 si on est seul adulte avec enf
 ** a. FIN **********
 
 ************
-** b.  Rajouter des enfants et les ranger dans les foyers fiscaux
+** b.  Rajouter des enfants et les ranger dans les ménages ^puis on les partage entre les foyers fiscaux
 global N_enf = ${npac}*${nmen}
 expand ${N_enf}+1 in 1,gen(exp)
 replace pac = exp
 drop exp
 
-foreach var of varlist concu conj decl conj id* concu couple marie{
+foreach var of varlist concu conj decl conj id* concu couple marie age{
 	replace `var' = 0 if pac ==1
 }
 replace id_ind = _n if pac ==1
-replace id_foyf = _n - ${nmen} if  pac== 1
+
+gen id_men_pac = .
+replace id_men_pac = _n - ${nmen}*(1+${couple})  if pac ==1
 forvalues i =2/$npac{
-	replace id_foyf = _n -${nmen}*(`i') if id_foyf > ${nmen} & pac ==1
+	replace id_men_pac = _n -${nmen}*(`i'+${couple}) if id_men_pac > ${nmen}  & pac == 1
+	}
+replace id_men = id_men_pac if pac ==1
+drop id_men_pac
+
+* Mettre les enfants dans le FF de leurs parents
+gen id_foy_pac = .
+
+if ${marie}==1 | ${couple}==0{
+	replace id_foy_pac = id_men if pac ==1
 }
 
-so id_foyf
-* Les variables des enfants : (A COMPLETER)
-
-*global age_enf "-1 3 18" /* Faire que dim(age_enf) = npac */
-global num_age : list sizeof global(age_enf)
+************************* A revoir : pour l'instant, tous les pac vont dans le FF du déclarant *******************
+if ${concubin}==1{
+	replace id_foy_pac = id_men*2-1 if pac ==1
+}
+************************************
+replace id_foyf = id_foy_pac if pac ==1
+drop id_foy_pac
+* Construire nenf_concu
 
 byso id_foyf : gen pac_sum = sum(pac)
 replace pac_sum = 0 if pac ==0
+
+*global age_enf "-1 3 18" /* Faire que dim(age_enf) = npac */
+global num_age : list sizeof global(age_enf)
 
 gen age_enf = 0
 forvalues age = 1/$num_age{
@@ -229,7 +256,7 @@ replace npers = nadul + nenf
 replace seul_enf_irpp = $caseT
 replace seul_enfmaj_irpp = $caseEKL
 
-* Construire nenf_concu
+
 ** b. FIN **********
 
 *gen nbp = 1+ ${marie} + .5*(nenf==1) + (.5+.5)*(nenf==2) + (.5+.5+ 1*(nenf-2))*(nenf>=3)/* Nombre de part du FF */
@@ -281,10 +308,16 @@ replace rfin_int_bar_irpp = /*${f2ts} + ${f2go} +*/ ${f2tr}
 replace rfin_pv_normal_irpp = ${f3vg}
 replace rfon_normal_irpp = ${f4ba}
 
+so id_foyf
 sort id_indiv
 order id_indiv id_foyf id_conj id_concu couple pac decl conj mat marie sal_irpp
 ** c. FIN **********
-* Eventuellement : Matching des concubins en ménages
+
+* Logement
+drop loyer_verse_men
+replace loyer_verse = ${loyer}
+byso id_men :  egen loyer_verse_men = total(loyer_verse)
+
 	
 save "$repo\base1${scenario}.dta", replace
 use "$repo\base1${scenario}.dta", replace
@@ -299,8 +332,10 @@ do "$repo\revbrut.do"
 ************
 ** e.  Imputation de variables nécessaires pour la suite */
 qui do "$repo\imputations.do"
-gen taille_ent = $taille_ent
-gen tva = $tva
+gen taille_ent = ${taille_ent_C} if  (conj == 1 | con2 == 1)
+replace taille_ent = ${taille_ent_D} if ((decl == 1 & couple == 0) | (decl == 1 & marie == 1) | con1 == 1)
+gen tva = ${tva_C} if  (conj == 1 | con2 == 1)
+replace tva = ${tva_D} if ((decl == 1 & couple == 0) | (decl == 1 & marie == 1) | con1 == 1)
 ** e. FIN **********
 
 ************
@@ -342,7 +377,7 @@ use "$repo\base2${scenario}.dta", clear
 qui	do "$taxipp_encours\3-Programmes\1-cotsoc OF.do"
 qui	do "$taxipp_encours\3-Programmes\2-irpp OF.do"
 qui do "$progdir\3-revcap.do"
-qui do "$progdir\4-prestations.do"
+qui	do "$taxipp_encours\3-Programmes\4-prestations OF.do"
 qui do "$progdir\5-isf.do"
 qui do "$progdir\6-bouclier_fiscal.do"
 

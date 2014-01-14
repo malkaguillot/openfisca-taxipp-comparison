@@ -74,7 +74,7 @@ replace nonsal_h_brut = 0 if nonsal_h_brut==.
 		
 	* Calcul du revenu fiscal de référence, du nombre de part du QF et du revenu net d'IRPP
 	
-do "$dofiles\1d-irpp2006_0_3.do"
+do "$sourcetaxipp\1d-irpp2006_0_3.do"
 	
 	* Calcul des pensions brutes
 	
