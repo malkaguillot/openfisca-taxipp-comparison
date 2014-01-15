@@ -39,6 +39,39 @@ qui do "P:\TAXIPP\TAXIPP 0.3\4-Analyses\Test OF\3-Programmes\chemins.do"
     * CHOIX *
     *^^^^^^^*
 	
+global repo C:\TaxIPP-Life\openfisca-taxipp-comparison\Taxipp
+global dic_scenar "{'nmen': 3, 'nbh_sal': 1820, 'part_rev': 0.6, 'scenario': 'concubin', 'rev_max': 100000}"
+global tva_C 0
+global activite 0
+global annee_sim 2011
+global taille_ent_C 20
+global f2tr 0
+global nmen 3
+global loyer_mensuel_menage 1000
+global tva 0
+global ISF 0
+global taille_ent 20
+global cadre_C 0
+global npac 0
+global nbh_sal_C 1820
+global f4ba 0
+global f3vg 0
+global public 0
+global age_enf 0
+global public_C 0
+global couple 1
+global f2dc 0
+global part_rev 0.6
+global caseEKL 0
+global scenario concubin
+global activite_C 0
+global statmarit 2
+global rev_max 100000
+global cadre 0
+global npac_C 0
+global nbh_sal 1820
+global caseT 0
+	
 	
 global annee = ${annee_sim}
 
