@@ -1,4 +1,4 @@
-   *************************************************************************************************************************
+    *************************************************************************************************************************
 
 * OBJECTIF : 
     *- permettre la création de différents scénarios de cas-types
@@ -29,18 +29,16 @@
          * seul un certain type de revenu étant décliné pour constituer la base
          
 *************************************************************************************************************************
-         
 ***********************************
 *******    0.   Préambule   *******
 ***********************************
+
 qui do "P:\TAXIPP\TAXIPP 0.3\4-Analyses\Test OF\3-Programmes\chemins.do"
 
     *^^^^^^^*
     * CHOIX *
     *^^^^^^^*
 	
-	
-global annee = ${annee_sim}
 
 * Appel des paramètres : paramètres législatifs stockés pour l'année 2011 sous forme de global
 qui do "$progdir\0_appel_parametres0_3.do"
@@ -60,14 +58,14 @@ if ${statmarit} == 3{
 if ${statmarit} == 4{
     global mat ="D" 
     }
-if ${statmarit} == 1{ 
+/*if ${statmarit} == 1{ 
     global mat ="P"  /* pacsé*/
     }    
 if ${statmarit} == 3{
     global mat ="V" /* jeune veuf */
-    }
+    } */
 
-    if "$mat" !="M" & ${couple}== 0{
+if "$mat" !="M" & ${couple}== 0{
     global marie 0 
     global concubin 0 
     }
@@ -151,6 +149,7 @@ replace age_conj = 38
 if ${couple}==0 & pac>0{ /* Pour forcer caseT = 1 si on est seul adulte avec enfant(s) */
     global caseT 1
 } 
+gen statmarit = "$statmarit"
 gen mat = "$mat"
 replace n_foy_men = 1+${concubin}
 replace men = con1 + decl*${marie} if pac == 0
@@ -244,6 +243,7 @@ replace cadre  = ${cadre} if (decl == 1 & couple == 0) | (decl == 1 & marie == 1
 replace public  = ${public_C} if (conj == 1 | con2 == 1)
 replace public  = ${public} if (decl == 1 & couple == 0) | (decl == 1 & marie == 1) | con1 == 1
 
+replace statmarit = "C" if pac == 1
 replace mat = "C" if pac == 1
 bys id_foyf: replace num_indf=_n 
 
