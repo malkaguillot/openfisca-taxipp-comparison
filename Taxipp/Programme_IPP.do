@@ -168,6 +168,7 @@ foreach var of varlist concu conj decl conj id* concu couple marie age con* men 
     replace `var' = 0 if pac ==1
 }
 replace id_ind = _n if pac ==1
+replace age_conj = . if pac ==1
 
 gen id_men_pac = .
 replace id_men_pac = _n - ${nmen}*(1+${couple})  if pac ==1
@@ -243,8 +244,9 @@ replace cadre  = ${cadre} if (decl == 1 & couple == 0) | (decl == 1 & marie == 1
 replace public  = ${public_C} if (conj == 1 | con2 == 1)
 replace public  = ${public} if (decl == 1 & couple == 0) | (decl == 1 & marie == 1) | con1 == 1
 
-replace statmarit = "C" if pac == 1
+
 replace mat = "C" if pac == 1
+replace statmarit = "0" if pac == 1
 bys id_foyf: replace num_indf=_n 
 
 * Revenu du travail
@@ -292,7 +294,7 @@ replace loyer_verse = ${loyer_mensuel_menage}*12/(1+${couple}) if pac ==0
 replace loyer_verse_men = ${loyer_mensuel_menage}*12
 replace loyer_conso = loyer_verse + loyer_fictif
 replace loyer_conso_men = loyer_verse_men + loyer_fictif_men
-    
+replace naiss = ${annee_sim} - age 
 save "$dofiles\base1${scenario}.dta", replace
 use "$dofiles\base1${scenario}.dta", replace
 
@@ -323,7 +325,7 @@ gen tx_csp_pub_0 = 0
 
 * Supprimer les variables créées mais qui vont être recalculées
 drop *_sim salchom_imp-nbp_seul masse_* smic_h_brut_2006 rfon_irpp 
-drop reduc_irpp_foy_tot-loyer_fictif_foy credit_div_foy-reduc_double_dec_foy rpp0_foy-irpp_ds_foy decote_irpp_foy irpp_brut_foy
+drop reduc_irpp_foy_tot-loyer_fictif_foy credit_div_foy-reduc_double_dec_foy rpp0_foy-irpp_ds_foy decote_irpp_foy irpp_brut_foy mat stat_prof
 drop sal_irpp_foy nonsal_irpp_foy pension_irpp_foy chom_irpp_foy pens_alim_rec_foy rfr_irpp_concu
 ** g. FIN **********
 

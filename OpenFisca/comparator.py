@@ -22,6 +22,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+
+# TODO: MBJ, drop non openfisca variables from input table (modify in openfisca-core)
+#            print only non_default input variables
+#            print only some ouput_vars
+  
 import pandas as pd
 from pandas import read_stata
 import numpy as np
@@ -52,6 +57,8 @@ class Comparison_cases(object):
         self.dic_var_input = None
         self.dic_var_output = None
         
+        self.simulation = None
+        
     def work_on_param(self):
         paths = self.paths
         paths['dta_input']  = paths['dta_input'] + self.dic_param['scenario'] + ".dta"
@@ -69,7 +76,7 @@ class Comparison_cases(object):
             # indicatrices : cadre, public, caseT (parent isolé)
             dic_default = { 
                            'scenario' : 'celib','nmen': 3, 
-                           'nb_enf' : 0, 'nb_enf_conj': 0, 'age_enf': None,  'rev_max': 100000, 'part_rev': 1, 'loyer_mensuel_menage': 1000,
+                           'nb_enf' : 0, 'nb_enf_conj': 0, 'age_enf': 0,  'rev_max': 100000, 'part_rev': 1, 'loyer_mensuel_menage': 1000,
                            'activite': 0, 'cadre': 0, 'public' : 0, 'nbh_sal': 1820, 'taille_ent' : 20, 'tva' : 0,
                            'activite_C': 0, 'cadre_C': 0, 'public_C' : 0, 'nbh_sal_C': 1820, 'taille_ent_C' : 20, 'tva_C' : 0,
                            'f2dc' : 0, 'f2tr': 0, 'f3vg':0, 'f4ba':0, 'ISF' : 0, 'caseT': 0, 'caseEKL' : 0
@@ -85,7 +92,7 @@ class Comparison_cases(object):
                 dic['couple'] = 1
                 dic['statmarit'] = 2 
                 
-            elif dic['scenario'] == 'marié':
+            elif dic['scenario'] == 'marie':
                 dic['couple'] = 1
                 dic['statmarit'] = 1 
         
@@ -126,7 +133,7 @@ class Comparison_cases(object):
         '''
         def _dic_corresp(onglet):
             names = pd.ExcelFile('correspondances_variables.xlsx').parse(onglet)
-            names = np.array(names.loc[names['equivalence'].isin([1,5]), ['var_TAXIPP', 'var_OF']])
+            names = np.array(names.loc[names['equivalence'].isin([1,5,8]), ['var_TAXIPP', 'var_OF']])
             dic = {}
             for i in range(len(names)) :
                 dic[names[i,0]] = names[i,1]
@@ -172,7 +179,7 @@ class Comparison_cases(object):
                 f.close()
          
         _insert_param_dofile(dic, dic_scenar, do_in, do_out, len_preamb)
-        subprocess.call([self.paths['stata'], "do", self.paths['do_out']], shell=True)
+        subprocess.call([self.paths['stata'],  "do", self.paths['do_out']], shell=True)
 
     def run_OF(self):
         '''
@@ -190,6 +197,7 @@ class Comparison_cases(object):
             if str(dic) != str(dic_dta) :
                 print "La base .dta permettant de lancer la simulation OF est absente "
                 print "La base s'en rapprochant le plus a été construite avec les paramètres : ", dic_dta
+                
                 pdb.set_trace()
             else :
                 data = data.drop('dic_scenar', 1)
@@ -204,6 +212,7 @@ class Comparison_cases(object):
             def _quimen(col):
                 quimen = col["conj"]==1 + col["concu"]==1 + col["pac"]==1
                 return quimen
+            
             def _so(data):
                 data["so"] = 0
                 data.loc[data['proprio_empr'] == 1, 'so'] = 1
@@ -212,13 +221,45 @@ class Comparison_cases(object):
                 data.loc[data['loge'] == 1, 'so'] = 6
                 return data
             
+            def _compl(var):
+                var = 1- var
+                return var
+            
+            def _count_by_ff(var):
+                ''' Compte le nombre de bouléen == 1 au sein du foyer fiscal'''
+                for i in range(1,nmen):
+                    compteur=0
+                    j=0
+                    while data['idfoy'] == i:
+                        j += j
+                        if var ==1:
+                            compteur += compteur
+                        else :  
+                            compteur = compteur
+                        data[j,'var'] = compteur
+                
             def _enf(data):
-                data["f7ea"] = data["nenf1113"] + data["nenf1415"]
-                data["f7ec"] = data["nenf1617"] 
-                data["f7ef"] = data["nenfmaj1819"] + data["nenfmaj20"] + data["nenfmaj21plus"]
-                data.drop(["nenf1113", "nenf1415", "nenf1617", "nenfmaj1819", "nenfmaj20", "nenfmaj21plus"], 1)
+                data["enf_college"] = 0
+                if  (11<data['age']<15):
+                    data['enf_college'] = 1
+                else:
+                    data['enf_college'] = 0
+#                data["enf_lycee"] = (data['age'] > 14 & data['age']<19)
+ #               data["enf_sup"] = (data['age'] >18)
+  #              data["f7ea"] = _count_by_ff(data["enf_college"]) 
+                # data["nenf1113"] + data["nenf1415"] #11-14
+   #             data["f7ec"] = _count_by_ff(data["enf_lycee"]) #data["nenf1617"] #15-17
+    #            data["f7ef"] = _count_by_ff(data["enf_sup"]) #data["nenfmaj1819"] + data["nenfmaj20"] + data["nenfmaj21plus"] #>17
+                data = data.drop(["nenf1113", "nenf1415", "nenf1617", "nenfmaj1819", "nenfmaj20",
+                                   "nenfmaj21plus", "nenfnaiss", "nenf02",  "nenf35",  "nenf610"], axis = 1)
                 return data
-
+            
+            def _workstate(data):
+                data['chpub'] = 0
+                data.loc[data['public'] == 1, 'chpub'] = 1
+                data.loc[data['public'] == 0, 'chpub' ] = 6
+                return data
+            
             data.rename(columns= dic_var, inplace=True)
             data["agem"] = 12*data["age"]
             
@@ -228,29 +269,39 @@ class Comparison_cases(object):
             data["quifam"] = data['quimen']
             
             data = _so(data)
-            data = _enf(data)
-            
-            var_todrop = ["couple", "mat" , "decl", "conj", "pac", "proprio_empr", "proprio", "locat", "loge"]
-            data = data.drop(var_todrop, axis=1)
+            #data = _enf(data)
+            data = _workstate(data)
+            print data.columns
+            #data["caseN"] = _comp(data["caseN"])
+            doubt = ["rfin"]
+            not_in_OF = [ "p1", "nbh", "nbh_sal", "loge_proprio",  "loge_locat",  "loge_autr", "loyer_fictif",  "loyer_verse",  "loyer_marche", "pens_alim_ver_foy", "sal_brut",  "sal_h_brut",
+                         "bail_prive",  "bail_pers_phys",  "loyer_conso",  "proprio_men",  "locat_men", "loge_men",  "proprio_empr_men", "loyer_fictif_men", 
+                         "bail_prive_men",  "bail_pers_phys_men", "loyer_marche_men", "loyer_conso_men",
+                          "ba_irpp",  "bic_irpp",  "bnc_irpp",  "nonsalexo_irpp", "nonsal_brut_cn", "nonsal_brut_cn_foy", "nonsal_brut", "nonsal_h_brut"] # variables non-salariés
+            var_to_drop = ["couple", "decl", "conj", "pac", "proprio_empr", "proprio", "locat", "nonsal_irpp", "nadul", 
+                          "loge", "marie", "change", "pondv", "concu", "cohab", "nenf_concu", "num_indf", "npers", "age_conj", "n_foy_men", "public"]
+            data = data.drop(var_to_drop + not_in_OF, axis=1)
             data.rename(columns={"id_conj" : "conj"}, inplace = True)
             
-            print data.to_string()
-            
+            print data.columns
             return data
         
         data_IPP = _test_of_dta(dta_input, dic)
         openfisca_survey =  _adaptation_var(data_IPP, self.dic_var_input)
+        openfisca_survey = openfisca_survey.fillna(0)
 
+        print openfisca_survey.to_string()
 
         ## UNTL HERE
         simulation = SurveySimulation()
         print type(openfisca_survey)
-        simulation.set_config(year=self.datesim, survey_filename=openfisca_survey)
+        simulation.set_config(year=self.datesim, survey_filename = openfisca_survey)
         simulation.set_param()
         simulation.compute()
         print simulation.input_table.table.describe().to_string()    
         print simulation.output_table.table.to_string()    
         
+        self.simulation = simulation
         self.OF_output = simulation.output_table.table
         return openfisca_survey
 
@@ -262,9 +313,47 @@ class Comparison_cases(object):
         '''
         dta_output = self.paths['dta_output']
         IPP_out = read_stata(dta_output).fillna(0)
+        dta_input = self.paths['dta_input']
+        IPP_in =  read_stata(dta_input).fillna(0)
         OF_out = self.OF_output.fillna(0)
+        OF_in = self.simulation.input_table.table
         dic = self.dic_var_output
-        print dic
+
+        check_list = [ 'irpp_net_foy', 'af_foys'] # 'csg_sal_ded',
+        print self.dic_param
+        
+        def error_diag(variable):
+            pass
+        
+        for ipp_var in check_list:
+            of_var = dic[ipp_var]
+            print of_var
+            entity = self.simulation.prestation_by_name[of_var].entity
+            
+            if entity == 'ind':
+                toto = ((IPP_out[ipp_var] - OF_out[of_var].abs()).abs() < 5)
+                print toto.to_string()
+                from numpy import logical_not as not_
+                print IPP_out.loc[ not_(toto) ,ipp_var].to_string()
+                print OF_out.loc[ not_(toto) ,of_var].to_string()
+                
+                print IPP_in.loc[not_(toto)].to_string()
+                print OF_in.loc[not_(toto)].to_string()
+                # TODO: finish by calling error_diag
+            elif entity == "fam":
+            
+                pass
+            
+            
+            elif entity == "foy":
+                toto_of = OF_out.loc[ OF_in.quifoy == 0  , of_var] 
+                print toto_of
+ #               toto = ((IPP_out[ipp_var] - OF_out[of_var].abs()).abs() < 5)
+                
+                
+                pass
+            elif entity == "men":
+                pass
         def _diff(seuil_abs, seuil_rel):
             for k, v in dic.items() :
                 diff_abs =  IPP_out[k].mean() - OF_out[v].mean()
@@ -276,12 +365,12 @@ class Comparison_cases(object):
                 if (diff_rel > seuil_rel) & (diff_rel is not None) :
                     print " Différence relative pour  ", k, ' : ', diff_rel
         
-        _diff(seuil_abs, seuil_rel)
+#         _diff(seuil_abs, seuil_rel)
     
-    def run_all(self):
+    def run_all(self, run_stata=True):
         self.work_on_param()
         self.dic_var()
-        if paths['stata'] is None :
+        if paths['stata'] is None or run_stata is False:
             print ("Les programmes Stata de TaxIPP n'ont pas été appelés au cours de cette simulation" 
                 "\n Si vous y avez normalement accès, vérifiez le chemin vers Stata dans CONFIG.py \n ")
         else :
@@ -291,52 +380,15 @@ class Comparison_cases(object):
         
         
 
-def fill_with_ipp_input(df):
-
-    openfisca_survey = df.loc[:,["id_foyf","id_indiv", "age", "marie", "mat", "decl", "conj", "pac", "cadre", "public" ]]
-    print openfisca_survey.to_string()
-    d = pd.DataFrame()
-    
-    # simple rename
-    
-    cols = {"id_foyf" : "idfoy", "id_indiv" : "noi"}
-    openfisca_survey.rename( columns=cols, inplace=True)
-    
-    # TODO: REMOVE IF NOT CELIB
-    openfisca_survey["idmen"] = openfisca_survey["idfoy"] 
-    openfisca_survey["idfam"] = openfisca_survey["idfoy"] 
-    
-    def _quifoy(col):
-        quimen = col["conj"]==1 + col["pac"]==1
-        return quimen
-    
-    openfisca_survey["quifoy"] = openfisca_survey.apply(_quifoy, axis=1).astype(int)
-    openfisca_survey = openfisca_survey.drop(["decl", "conj", "pac"], axis=1)
-    print openfisca_survey.columns
-    print openfisca_survey.to_string()
-    
-    # TODO: REMOVE (just for testing import
-    openfisca_survey["quimen"] = openfisca_survey["quifoy"]
-    openfisca_survey["quifam"] = openfisca_survey["quifoy"]
-    ## UNTL HERE
-    simulation = SurveySimulation()
-    simulation.set_config(year=2006, survey_filename=openfisca_survey)
-    simulation.set_param()
-    simulation.compute()
-    print simulation.input_table.table.describe().to_string()    
-    print simulation.output_table.table.describe().to_string()    
-    
-    return openfisca_survey
-
 
 if __name__ == '__main__':
     
     #fill_with_ipp_input(read_stata(paths['dta_input']+ 'concubin.dta'))
 
-    dict_param = { 'scenario' : 'celib', 'nmen': 3,
+    dict_param = { 'scenario' : 'marie', 'nmen': 3,
                   'nb_enf' : 3, 'age_enf' : [20,12,2],
                  'nbh_sal': 1820, 'rev_max': 100000, 'part_rev': 0.6
                  }
-    dic = {'nbh_sal': 1820, 'scenario': 'concubin', 'part_rev': 0.6, 'rev_max': 100000, 'nb_enf': 3, 'nmen': 3, 'age_enf': [20, 1, 2]}
+    dic = {'scenario': 'marie', 'rev_max': 1000000, 'nb_enf' : 3, 'age_enf' : [20,12,2], 'part_rev': 0.6}
     hop = Comparison_cases(2011, dic)
-    hop.run_all()
+    hop.run_all()#run_stata=False)
