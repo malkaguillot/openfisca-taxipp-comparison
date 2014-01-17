@@ -246,7 +246,7 @@ replace public  = ${public} if (decl == 1 & couple == 0) | (decl == 1 & marie ==
 
 replace mat = "C" if pac == 1
 replace statmarit = "0" if pac == 1
-bys id_foyf: replace num_indf=_n
+bys id_foyf: replace num_indf=_n 
 
 * Revenu du travail
  
