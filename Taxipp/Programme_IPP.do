@@ -247,7 +247,7 @@ replace public  = ${public} if (decl == 1 & couple == 0) | (decl == 1 & marie ==
 replace mat = "C" if pac == 1
 replace statmarit = "0" if pac == 1
 bys id_foyf: replace num_indf=_n
- 
+
 * Revenu du travail
  
 replace nbh = cond(${activite_C}!=0,0,${nbh_sal}) if con2 == 1 | conj == 1
