@@ -23,11 +23,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-# TODO: MBJ, print only some ouput_vars
-
 from pandas import read_stata, ExcelFile
 from numpy import logical_not as not_, array, zeros
-
 import subprocess
 import pdb
 
@@ -112,7 +109,8 @@ class Comparison_cases(object):
                     assert dic['npac'] == len(dic['age_enf'])
                 except:
                     print "Problème dans la déclaration des âges des enfants"
-                    dic['age_enf'] = zeros(1)*dic['npac']
+                    dic['age_enf'] = zeros(1)*dic['npac'] # TODO: check
+                
                 dic['age_enf'] = str(dic['age_enf'])[1:-1].replace(',', ' ') # To stata
 
             return dic
@@ -354,7 +352,6 @@ class Comparison_cases(object):
                 conflict = ((ipp_foy - openfisca_foy.abs()).abs() > THRESHOLD)
                 print conflict.to_string()
                 
-                
             elif entity == "men":
                 pass
         def _diff(seuil_abs, seuil_rel):
@@ -363,8 +360,9 @@ class Comparison_cases(object):
                 
                 if diff_abs > seuil_abs :
                     print " Différence absolue pour ", k, ' : ', diff_abs
-                
+
                 diff_rel = (ipp_output.loc[(ipp_output[k] != 0) & (openfisca_output[v] != 0), k] /openfisca_output.loc[(ipp_output[k] != 0) & (openfisca_output[v] != 0), v] ).mean()
+
                 if (diff_rel > seuil_rel) & (diff_rel is not None) :
                     print " Différence relative pour  ", k, ' : ', diff_rel
         
@@ -413,4 +411,5 @@ def run():
 if __name__ == '__main__':
     
     #fill_with_ipp_input(read_stata(paths['dta_input']+ 'concubin.dta'))
+
     run()
