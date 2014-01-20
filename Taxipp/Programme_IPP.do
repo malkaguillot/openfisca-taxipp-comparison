@@ -1,36 +1,36 @@
    *************************************************************************************************************************
  
 * OBJECTIF :
-    *- permettre la cr�ation de diff�rents sc�narios de cas-types
-    *- sortir une base (au niveau du m�nage = foyf = foys) pr�sentant :
-                            * les caract�ristiques des sc�narios
-                            * les r�sultats des calculs des imp�ts et prestations
-    *- pr�parer l'utilisation de ces bases par OF et Python
+    *- permettre la creation de differents scenarios de cas-types
+    *- sortir une base (au niveau du menage = foyf = foys) presentant :
+                            * les caracteristiques des scenarios
+                            * les resultats des calculs des impets et prestations
+    *- preparer l'utilisation de ces bases par OF et Python
  
 * PRINCIPE :
-    *- l'utilisateur remplie les variables de choix propos�es au d�but puis le programme se d�roule
-    *- � terme, il est envisag� de produire tous les sc�narios d'un coup en faisant des boucles sur les globales de choix
+    *- l'utilisateur remplie les variables de choix proposees au debut puis le programme se deroule
+    *- e terme, il est envisage de produire tous les scenarios d'un coup en faisant des boucles sur les globales de choix
  
 * A FAIRE :
-    *- �largir le programme pour prendre en compte d'autres types de revenus (ch�mage, retraite, capital...)
+    *- elargir le programme pour prendre en compte d'autres types de revenus (chemage, retraite, capital...)
     *- comprendre pourquoi on ne retombe pas sur sal_irpp pour le public (d'Etat : seule prise en compte dans TAXIPP)
     *- loyer
     *- ISF
     *- mettre que les pacs puissent avoir un revenu
-    *- travailler sur les non salari�s ? (attention checker nbh nbh_sal nbh_nonsal statprof) & les tempspartiels ?
+    *- travailler sur les non salaries ? (attention checker nbh nbh_sal nbh_nonsal statprof) & les tempspartiels ?
    
 * PLAN
-    * 0. Pr�ambule
-    * 1. Cr�ation base pour chaque sc�nario
+    * 0. Preambule
+    * 1. Creation base pour chaque scenario
     * 2. Simulation
-    * 3. R�sultats
+    * 3. Resultats
    
-* Rappel : on appelle SCENARIO un ensemble de caract�ristiques propre � l'entit� menage=foyf=foys,
-         * seul un certain type de revenu �tant d�clin� pour constituer la base
+* Rappel : on appelle SCENARIO un ensemble de caracteristiques propre e l'entite menage=foyf=foys,
+         * seul un certain type de revenu etant decline pour constituer la base
         
 *************************************************************************************************************************
 ***********************************
-*******    0.   Pr�ambule   *******
+*******    0.   Preambule   *******
 ***********************************
  
 qui do "P:\TAXIPP\TAXIPP 0.3\4-Analyses\Test OF\3-Programmes\chemins.do"
@@ -40,7 +40,7 @@ qui do "P:\TAXIPP\TAXIPP 0.3\4-Analyses\Test OF\3-Programmes\chemins.do"
     *^^^^^^^*
                
  
-* Appel des param�tres : param�tres l�gislatifs stock�s pour l'ann�e 2011 sous forme de global
+* Appel des parametres : parametres legislatifs stockes pour l'annee 2011 sous forme de global
 qui do "$progdir\0_appel_parametres0_3.do"
  
     *^^^^^^^^^^^*
@@ -59,7 +59,7 @@ if ${statmarit} == 4{
     global mat ="D"
     }
 /*if ${statmarit} == 1{
-    global mat ="P"  /* pacs�*/
+    global mat ="P"  /* pacse*/
     }   
 if ${statmarit} == 3{
     global mat ="V" /* jeune veuf */
@@ -71,7 +71,7 @@ if "$mat" !="M" & ${couple}== 0{
     }
 if "$mat" =="M"{
     global marie 1
-    global couple 1 /* Pour si on s'est tromp� dans le choix : mari� => on est en couple */
+    global couple 1 /* Pour si on s'est trompe dans le choix : marie => on est en couple */
     global concubin 0
     }
 if "$mat" !="M" & ${couple}==1{
@@ -87,21 +87,21 @@ forvalues i = 1 /$nmen {
 global num : list sizeof global(rev)
 *TEST*
 *if ${num}!=(1+${couple})*${nmen} {
-*    disp "Il faut qu'il y ait autant de revenus imposables que d'individus cr��s : " (1+${couple})*${nmen}
+*    disp "Il faut qu'il y ait autant de revenus imposables que d'individus crees : " (1+${couple})*${nmen}
 *}
 if $npac == 0{
     global caseT 0
 }
 ***********************************
-*******  1.    Cr�ation base     *******
+*******  1.    Creation base     *******
 ***********************************
  
 use "$repo\base.dta", clear
-* Objectif : cr�er X foyers fiscaux (avec le bon nombre d'individu dans chaque)
+* Objectif : creer X foyers fiscaux (avec le bon nombre d'individu dans chaque)
  
 ************
-** a. On met d'abord les personnes de r�f�rence et leur conjoint (s'il y a lieu)
-global N_obs = (1+${couple})*${nmen} /* on garde X individus si c�lib / 2*X si couples */
+** a. On met d'abord les personnes de reference et leur conjoint (s'il y a lieu)
+global N_obs = (1+${couple})*${nmen} /* on garde X individus si celib / 2*X si couples */
 expand ${N_obs} in 1
  
 replace id_indiv = _n
@@ -158,7 +158,7 @@ replace foy = men
 ** a. FIN **********
  
 ************
-** b.  Rajouter des enfants et les ranger dans les m�nages ^puis on les partage entre les foyers fiscaux
+** b.  Rajouter des enfants et les ranger dans les menages ^puis on les partage entre les foyers fiscaux
 global N_enf = ${npac}*${nmen}
 expand ${N_enf}+1 in 1,gen(exp)
 replace pac = exp
@@ -194,7 +194,7 @@ replace id_foyf = id_foy_pac if pac ==1
 so id_foyf id_ind
 drop id_foy_pac
  
-* nenf_concu : les enfants du m�nage qui sont ceux du concubin
+* nenf_concu : les enfants du menage qui sont ceux du concubin
 replace nenf_concu = ${npac_C} if con1 ==1
 replace nenf_concu = ${npac} - ${npac_C} if con2 ==1
  
@@ -206,9 +206,10 @@ global num_age : list sizeof global(age_enf)
 gen age_enf = 0
 forvalues age = 1/$num_age{
     global A : word `age' of $age_enf
-    replace age = ${A} if pac_sum ==  `age'
-    replace age_enf = ${A} if pac_sum ==  `age'
+*    replace age = ${A} if pac_sum ==  `age'
+    replace age_enf = ${A} if pac_sum_men ==  `age'
 }
+replace age = age_enf if pac == 1
 drop npers_men nadul nenf nenfmaj nenfnaiss nenf02 nenf35 nenf610 nenf1113 nenf1415 nenf1617 nenfmaj1819 nenfmaj20 nenfmaj21plus pac_sum
 byso id_foy :  egen nenfnaiss = total(age<0)
 byso id_foy :  egen nenf02 = total(age>=0 & age < 3)
@@ -233,7 +234,7 @@ replace seul_enfmaj_irpp = $caseEKL
 *gen nbp = 1+ ${marie} + .5*(nenf==1) + (.5+.5)*(nenf==2) + (.5+.5+ 1*(nenf-2))*(nenf>=3)/* Nombre de part du FF */
  
 ************
-** c.  Variables � modifier
+** c.  Variables e modifier
  
 *replace id_conj = _n-1 if mod(id_indiv,2)==0
 *replace id_conj = _n+1 if mod(id_indiv,2)==1
@@ -269,12 +270,12 @@ forvalues r = 1/$num{
     drop id_men_`r'
     }
 replace sal_irpp = rev_temp     if ${activite_C} == 0 & (conj == 1 | con2 == 1) /* Actif */
-replace chom_irpp = rev_temp     if ${activite_C} == 1 & (conj == 1 | con2 == 1) /* Ch�meur */
-replace pension_irpp = rev_temp if ${activite_C} == 3 & (conj == 1 | con2 == 1) /* Retrait� */
+replace chom_irpp = rev_temp     if ${activite_C} == 1 & (conj == 1 | con2 == 1) /* Chemeur */
+replace pension_irpp = rev_temp if ${activite_C} == 3 & (conj == 1 | con2 == 1) /* Retraite */
  
 replace sal_irpp = rev_temp     if ${activite} == 0 & ((decl == 1 & couple == 0) | (decl == 1 & marie == 1) | con1 == 1) /* Actif */
-replace chom_irpp = rev_temp     if ${activite} == 1 & ((decl == 1 & couple == 0) | (decl == 1 & marie == 1) | con1 == 1) /* Ch�meur */
-replace pension_irpp = rev_temp if ${activite} == 3 & ((decl == 1 & couple == 0) | (decl == 1 & marie == 1) | con1 == 1) /* Retrait� */
+replace chom_irpp = rev_temp     if ${activite} == 1 & ((decl == 1 & couple == 0) | (decl == 1 & marie == 1) | con1 == 1) /* Chemeur */
+replace pension_irpp = rev_temp if ${activite} == 3 & ((decl == 1 & couple == 0) | (decl == 1 & marie == 1) | con1 == 1) /* Retraite */
 drop rev_temp
  
     * Revenu du capital
@@ -302,13 +303,13 @@ save "$dofiles\base1${scenario}.dta", replace
 use "$dofiles\base1${scenario}.dta", replace
  
 ************
-** d.  Calcul des revenus bruts (sal, nonsal, chom, pension) � partir des revenus imposables */
+** d.  Calcul des revenus bruts (sal, nonsal, chom, pension) e partir des revenus imposables */
 global pss ${pss_m}*12
 do "$dofiles\revbrut.do"
 ** d. FIN **********
  
 ************
-** e.  Imputation de variables n�cessaires pour la suite */
+** e.  Imputation de variables necessaires pour la suite */
 qui do "$dofiles\imputations.do"
 gen taille_ent = ${taille_ent_C} if  (conj == 1 | con2 == 1)
 replace taille_ent = ${taille_ent} if ((decl == 1 & couple == 0) | (decl == 1 & marie == 1) | con1 == 1)
@@ -317,16 +318,16 @@ replace tva = ${tva} if ((decl == 1 & couple == 0) | (decl == 1 & marie == 1) | 
 ** e. FIN **********
  
 ************
-** f.  Il faut g�rer certaines variables de revenu financier...
+** f.  Il faut gerer certaines variables de revenu financier...
 qui    do "$dofiles\revfin.do"
 ** f. FIN **********
  
 ************
-** g. un truc dont a besoin TAXIPP pour tourner : pas d'impact sur les r�sultats (car pas pris en compte dans OF?)
+** g. un truc dont a besoin TAXIPP pour tourner : pas d'impact sur les resultats (car pas pris en compte dans OF?)
 gen tx_csp_priv_fac =0
 gen tx_csp_pub_0 = 0
  
-* Supprimer les variables cr��es mais qui vont �tre recalcul�es
+* Supprimer les variables creees mais qui vont etre recalculees
 
 drop *_sim salchom_imp-nbp_seul masse_* smic_h_brut_2006 rfon_irpp
 drop reduc_irpp_foy_tot-loyer_fictif_foy credit_div_foy-reduc_double_dec_foy rpp0_foy-irpp_ds_foy decote_irpp_foy irpp_brut_foy mat stat_prof
@@ -339,7 +340,7 @@ gen dic_scenar= "$dic_scenar"
 save "$repo\base_IPP_input_${scenario}.dta", replace
  
 ****************************************************
-*****  2.    Simulation : ne tourne qu'� l'IPP  *****
+*****  2.    Simulation : ne tourne qu'e l'IPP  *****
 ****************************************************
  
 use "$repo\base_IPP_input_${scenario}.dta", clear
@@ -350,8 +351,9 @@ qui    do "$taxipp_encours\3-Programmes\2-irpp OF.do"
 qui do "$progdir\3-revcap.do"
 qui    do "$taxipp_encours\3-Programmes\4-prestations OF.do"
 qui do "$progdir\5-isf.do"
-qui do "$progdir\6-bouclier_fiscal.do"
+qui do "$taxipp_encours\3-Programmes\6-bouclier_fiscal OF.do"
  
 drop id_indiv-loyer_verse_men reduc_ds-reduc_irpp 
  
 save "$repo\base_IPP_output_${scenario}.dta", replace
+

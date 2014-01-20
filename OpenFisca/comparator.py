@@ -23,7 +23,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from pandas import read_stata, ExcelFile
+from pandas import read_stata, ExcelFile, DataFrame
 from numpy import logical_not as not_, array, zeros
 import subprocess
 import pdb
@@ -34,7 +34,6 @@ openfisca_france.init_country()
 from CONFIG import paths
 from openfisca_core.simulations import SurveySimulation
 
-THRESHOLD = 5
 
 class Comparison_cases(object):
     """
@@ -42,23 +41,23 @@ class Comparison_cases(object):
     Structure de classe n'est peut-être pas nécessaire 
     """
     
-    def __init__(self, datesim, dict_param):
+    def __init__(self, datesim, choix_by_scenario):
         # Paramètres initiaux
         self.datesim = datesim
         self.dic_scenar = None
-        self.dic_param = dict_param 
+        self.param_scenario = choix_by_scenario
         self.paths = paths
 
         # Actualisés au cours de la comparaison
-        self.dic_var_input = None
-        self.dic_var_output = None
+        self.ipp2of_input_variables = None
+        self.ipp2of_output_variables = None
         
         self.simulation = None
         
     def work_on_param(self):
         paths = self.paths
-        paths['dta_input']  = paths['dta_input'] + self.dic_param['scenario'] + ".dta"
-        paths['dta_output']  = paths['dta_output'] + self.dic_param['scenario'] + ".dta"
+        paths['dta_input']  = paths['dta_input'] + self.param_scenario['scenario'] + ".dta"
+        paths['dta_output']  = paths['dta_output'] + self.param_scenario['scenario'] + ".dta"
         self.paths = paths
         
         def _dic_param_ini(dic):
@@ -71,7 +70,7 @@ class Comparison_cases(object):
             # Activité : [0'Actif occupé',  1'Chômeur', 2'Étudiant, élève', 3'Retraité', 4'Autre inactif']), default = 4)
             # indicatrices : cadre, public, caseT (parent isolé)
             dic_default = { 
-                           'scenario' : 'celib','nmen': 3, 
+                           'scenario' : 'celib', 'nmen': 3, 
                            'nb_enf' : 0, 'nb_enf_conj': 0, 'age_enf': 0,  'rev_max': 100000, 'part_rev': 1, 'loyer_mensuel_menage': 1000,
                            'activite': 0, 'cadre': 0, 'public' : 0, 'nbh_sal': 1820, 'taille_ent' : 20, 'tva' : 0,
                            'activite_C': 0, 'cadre_C': 0, 'public_C' : 0, 'nbh_sal_C': 1820, 'taille_ent_C' : 20, 'tva_C' : 0,
@@ -115,15 +114,15 @@ class Comparison_cases(object):
 
             return dic
             
-        dic = self.dic_param
+        dic = self.param_scenario
         self.dic_scenar = _dic_param_ini(dic)
         dic['annee_sim'] = self.datesim
         dic = _default_param(dic)
         dic = _civilstate(dic)
         dic = _enf(dic)
-        self.dic_param = dic
+        self.param_scenario = dic
 
-    def dic_var(self):
+    def def_ipp2of_dic(self):
         ''' 
         Création du dictionnaire dont les clefs sont les noms des variables IPP
         et les arguments ceux des variables OF 
@@ -136,15 +135,15 @@ class Comparison_cases(object):
                 dic[names[i,0]] = names[i,1]
             return dic
             
-        self.dic_var_input = _dic_corresp('input')
-        self.dic_var_output =  _dic_corresp('output')
+        self.ipp2of_input_variables = _dic_corresp('input')
+        self.ipp2of_output_variables =  _dic_corresp('output')
         
         
     def run_TaxIPP(self):
         do_in = self.paths['do_in']
         do_out = self.paths['do_out']
         len_preamb = 40
-        dic = self.dic_param
+        dic = self.param_scenario
         dic_scenar = self.dic_scenar
         
         def _insert_param_dofile(dic, dic_scenar, do_in, do_out, len_preamb):
@@ -160,7 +159,7 @@ class Comparison_cases(object):
                 # Préambule
                 f.writelines(head)
                 
-                # Repo pour stata +dic_param
+                # Repo pour stata +param_scenario
                 to_write = 'global repo ' + paths['repo_to_stata'] + "\n"
                 f.write(to_write)
                 to_write = "global dic_scenar " + '"' + str(dic_scenar)  + '"' +"\n"
@@ -201,22 +200,20 @@ class Comparison_cases(object):
             return data
         
         def _adaptation_var(data, dic_var):
-
-            def _quifoy(col):
-                # TODO, il faut gérer les pac
-                try:
-                    quifoy = col["conj"]==1 + col["pac"]==1 # TODO: faux 
-                except:
-                    quifoy = col["conj"]==1
-                return quifoy
             
-            def _quimen(col):
-                # TODO, il faut gérer les enfants
-                try:
-                    quimen = col["conj"]==1 + col["concu"]==1 + col["pac"]==1
-                except:
-                    quimen = col["conj"]==1 + col["concu"]==1 
-                return quimen
+            def _qui(data, entity):
+                qui = "qui" + entity
+                id = "id" + entity
+                data[qui] = 2
+                data.loc[data['decl'] == 1, qui] = 0
+                data.loc[data['conj'] == 1, qui] = 1
+                if entity == "men" :
+                     data.loc[data['con2'] == 1, qui] = 1
+                j=2
+                while any(data.duplicated([qui, id])):
+                    data.loc[data.duplicated([qui, id]), qui] = j+1
+                    j += 1
+                return data[qui]
             
             def _so(data):
                 data["so"] = 0
@@ -224,40 +221,29 @@ class Comparison_cases(object):
                 data.loc[data['proprio'] == 1, 'so'] = 2
                 data.loc[data['locat'] == 1, 'so'] = 4
                 data.loc[data['loge'] == 1, 'so'] = 6
-                return data
+                return data['so']
             
             def _compl(var):
                 var = 1- var
+                var = var.astype(int)
                 return var
             
-            def _count_by_ff(var):
-                ''' Compte le nombre de bouléen == 1 au sein du foyer fiscal'''
-                nmen = 10
-                for i in range(1, nmen):
-                    compteur=0
-                    j=0
-                    while data['idfoy'] == i:
-                        j += j
-                        if var ==1:
-                            compteur += compteur
-                        else :  
-                            compteur = compteur
-                        data[j,'var'] = compteur
+            def _count_by_entity(data, var, entity, bornes):
+                ''' Compte le nombre de 'var compris entre les 'bornes' au sein de l''entity' '''
+                id = 'id' +entity
+                qui = 'qui' + entity
+                data.index = data[id]
+                cond = (bornes[0] <= data[var]) & (data[var]<= bornes[1]) & (data[qui]>1)
+                col = DataFrame(data.loc[cond, :].groupby(id).size(), index = data.index).fillna(0)
+                col.reset_index()
+                return col
                 
-            def _enf(data):
-                data["enf_college"] = 0
-                if  (11<data['age']<15):
-                    data['enf_college'] = 1
-                else:
-                    data['enf_college'] = 0
-#                data["enf_lycee"] = (data['age'] > 14 & data['age']<19)
-#                data["enf_sup"] = (data['age'] >18)
-#                data["f7ea"] = _count_by_ff(data["enf_college"]) 
-#                data["nenf1113"] + data["nenf1415"] #11-14
-#                data["f7ec"] = _count_by_ff(data["enf_lycee"]) #data["nenf1617"] #15-17
-#                data["f7ef"] = _count_by_ff(data["enf_sup"]) #data["nenfmaj1819"] + data["nenfmaj20"] + data["nenfmaj21plus"] #>17
-                data.drop(["nenf1113", "nenf1415", "nenf1617", "nenfmaj1819", "nenfmaj20",
-                                   "nenfmaj21plus", "nenfnaiss", "nenf02",  "nenf35",  "nenf610"], axis = 1, inplace=True)
+            def _count_enf(data):
+                data["f7ea"] = _count_by_entity(data,'age', 'foy', [11,14]) #nb enfants ff au collège (11-14) 
+                data["f7ec"] = _count_by_entity(data,'age', 'foy', [15,17]) # #nb enfants ff au lycée  15-17
+                data["f7ef"] = _count_by_entity(data,'age', 'foy', [18,99])  #nb enfants ff enseignement sup >17
+                data = data.drop(["nenf1113", "nenf1415", "nenf1617", "nenfmaj1819", "nenfmaj20", "nenfmaj21plus", "nenfnaiss", "nenf02",  "nenf35",  "nenf610"], axis = 1)
+                data.index = range(len(data))
                 return data
             
             def _workstate(data):
@@ -265,20 +251,19 @@ class Comparison_cases(object):
                 data.loc[data['public'] == 1, 'chpub'] = 1
                 data.loc[data['public'] == 0, 'chpub' ] = 6
                 return data
-            
             data.rename(columns= dic_var, inplace=True)
+            
             data["agem"] = 12*data["age"]
-            
+            data['quifoy'] = _qui(data, 'foy')
+            data['quimen'] = _qui(data, 'men')
             data["idfam"] = data["idmen"]
-            data["quifoy"] = data.apply(_quifoy, axis=1).astype(int)
-            data["quimen"] = data.apply(_quimen, axis=1).astype(int)
             data["quifam"] = data['quimen']
-            
-            data = _so(data)
-            #data = _enf(data)
+
+            #print data[['idfoy','idmen', 'quimen','quifoy', 'decl', 'conj', 'con2']].to_string()
+            data['so'] = _so(data)
+            data = _count_enf(data)
             data = _workstate(data)
-            print data.columns
-            #data["caseN"] = _comp(data["caseN"])
+            data["caseN"] = _compl(data["caseN"])
             doubt = ["rfin"]
             
             not_in_OF = [ "p1", "nbh", "nbh_sal", "loge_proprio",  "loge_locat",  "loge_autr", "loyer_fictif",  "loyer_verse",  "loyer_marche", "pens_alim_ver_foy", "sal_brut",  "sal_h_brut",
@@ -290,11 +275,10 @@ class Comparison_cases(object):
             vars_to_drop = [var for var in (other_vars_to_drop + not_in_OF) if var in data.columns]            
             data = data.drop(vars_to_drop, axis=1)
             data.rename(columns={"id_conj" : "conj"}, inplace = True)
-            # print data.columns
             return data
         
         data_IPP = _test_of_dta(dta_input, dic)
-        openfisca_survey =  _adaptation_var(data_IPP, self.dic_var_input)
+        openfisca_survey =  _adaptation_var(data_IPP, self.ipp2of_input_variables)
         openfisca_survey = openfisca_survey.fillna(0)
 
         simulation = SurveySimulation()
@@ -307,7 +291,7 @@ class Comparison_cases(object):
         return openfisca_survey
 
     
-    def compare(self, seuil_abs = 100, seuil_rel = 0.10):
+    def compare(self, THRESHOLD = 50):
         '''
         Fonction qui comparent les calculs d'OF et et de TaxIPP
         Gestion des outputs
@@ -318,59 +302,48 @@ class Comparison_cases(object):
         ipp_input =  read_stata(dta_input).fillna(0)
         openfisca_output = self.openfisca_outputput.fillna(0)
         openfisca_input = self.simulation.input_table.table
-        ipp2of_output_variables = self.dic_var_output
+        ipp2of_output_variables = self.ipp2of_output_variables
 
-        check_list = ['csg_sal_ded', 'irpp_net_foy', 'af_foys'] # 'csg_sal_ded',
-        print self.dic_param
+        check_list = ['csg_sal_ded', 'irpp_net_foy', 'af_foys'] 
         
-        for ipp_var in check_list:
+        def _conflict_by_entity(ent, of_var, ipp_var, pb_calcul, output1 = openfisca_output, input1 = openfisca_input, output2 = ipp_output):
+            if ent == 'ind':
+                output1 = output1[of_var]    
+                output2 = output2[ipp_var]
+            else :
+                output1 = output1.loc[ input1['qui'+ent] == 0, of_var]    
+                output2 = output2.loc[ input1['qui'+ent] == 0, ipp_var]
+                input1 = input1.loc[ input1['qui'+ent] == 0, :]
+                
+            conflict = ((output2.abs() - output1.abs()).abs() > THRESHOLD)
+            if len(output2[conflict]) != 0: # TODO : a améliorer
+                print "Le calcul de " + of_var + " pose problème : "
+                print output2[conflict].to_string()
+                print output1[conflict].to_string()            
+                print input1.loc[conflict, self.relevant_input_variables()].to_string()
+                pb_calcul += [of_var]
+        
+        pb_calcul = []
+        for ipp_var in ipp2of_output_variables.keys(): #check_list
             of_var = ipp2of_output_variables[ipp_var]
             entity = self.simulation.prestation_by_name[of_var].entity
-            
             if entity == 'ind':
-                conflict = ((ipp_output[ipp_var] - openfisca_output[of_var].abs()).abs() < THRESHOLD)
-                print conflict.to_string()
-                print ipp_output.loc[not_(conflict), ipp_var].to_string()
-                print openfisca_output.loc[not_(conflict), of_var].to_string()
-                                
-                print ipp_input.loc[not_(conflict), ].to_string()
-                print openfisca_input.loc[not_(conflict), self.relevant_input_variables()].to_string()
+                _conflict_by_entity('ind', of_var, ipp_var, pb_calcul)
 
-                #error_diag()
-                
-                # TODO: finish by calling error_diag
             elif entity == "fam":
-            
-                pass
-            
-            
+                _conflict_by_entity('fam', of_var, ipp_var, pb_calcul)
+
             elif entity == "foy":
-                openfisca_foy = openfisca_output.loc[ openfisca_input.quifoy == 0, of_var]             
-                ipp_foy = ipp_output.loc[ openfisca_input.quifoy == 0, ipp_var] 
-                print ipp_foy
+                _conflict_by_entity('foy', of_var, ipp_var, pb_calcul)
 
-                conflict = ((ipp_foy - openfisca_foy.abs()).abs() > THRESHOLD)
-                print conflict.to_string()
-                
             elif entity == "men":
-                pass
-        def _diff(seuil_abs, seuil_rel):
-            for k, v in dic.items() :
-                diff_abs =  ipp_output[k].mean() - openfisca_output[v].mean()
+                _conflict_by_entity('men', of_var, ipp_var, pb_calcul)
                 
-                if diff_abs > seuil_abs :
-                    print " Différence absolue pour ", k, ' : ', diff_abs
-
-                diff_rel = (ipp_output.loc[(ipp_output[k] != 0) & (openfisca_output[v] != 0), k] /openfisca_output.loc[(ipp_output[k] != 0) & (openfisca_output[v] != 0), v] ).mean()
-
-                if (diff_rel > seuil_rel) & (diff_rel is not None) :
-                    print " Différence relative pour  ", k, ' : ', diff_rel
-        
-#         _diff(seuil_abs, seuil_rel)
-    
+        print len(pb_calcul), pb_calcul
+                
     def run_all(self, run_stata=True):
         self.work_on_param()
-        self.dic_var()
+        self.def_ipp2of_dic()
         if paths['stata'] is None or run_stata is False:
             print ("Les programmes Stata de TaxIPP n'ont pas été appelés au cours de cette simulation" 
                 "\n Si vous y avez normalement accès, vérifiez le chemin vers Stata dans CONFIG.py \n ")
@@ -398,18 +371,10 @@ class Comparison_cases(object):
         return output_variables
 
 def run():
-    
-    dict_param = { 'scenario' : 'marie', 'nmen': 3,
-                  'nb_enf' : 3, 'age_enf' : [20,12,2],
-                 'nbh_sal': 1820, 'rev_max': 100000, 'part_rev': 0.6
-                 }
-    dic = {'scenario': 'marie', 'rev_max': 1000000, 'nb_enf' : 3, 'age_enf' : [20,12,2], 'part_rev': 0.6}
-    hop = Comparison_cases(2011, dic)
-    hop.run_all(run_stata=False)
+    param_scenario = {'scenario': 'concubin', 'nb_enf' : 3, 'nb_enf_conj': 1, 'age_enf': [17,8,20], 'rev_max': 1000000, 'part_rev': 0.6}
+    hop = Comparison_cases(2011, param_scenario)
+    hop.run_all(run_stata= False)
 
 
 if __name__ == '__main__':
-    
-    #fill_with_ipp_input(read_stata(paths['dta_input']+ 'concubin.dta'))
-
     run()
