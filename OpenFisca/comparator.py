@@ -23,16 +23,21 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from pandas import read_stata, ExcelFile, DataFrame
-from numpy import logical_not as not_, array, zeros
-import subprocess
+import logging
+import os
 import pdb
+import subprocess
+import sys
 
+from numpy import logical_not as not_, array, zeros
+from pandas import read_stata, ExcelFile, DataFrame
+
+from openfisca_core import model
+from openfisca_core.simulations import SurveySimulation
 import openfisca_france
-openfisca_france.init_country()
+openfisca_france.init_country()#start_from="brut")
 
 from CONFIG import paths
-from openfisca_core.simulations import SurveySimulation
 
 
 class Comparison_cases(object):
@@ -72,8 +77,8 @@ class Comparison_cases(object):
             dic_default = { 
                            'scenario' : 'celib', 'nmen': 3, 
                            'nb_enf' : 0, 'nb_enf_conj': 0, 'age_enf': 0,  'rev_max': 100000, 'part_rev': 1, 'loyer_mensuel_menage': 1000,
-                           'activite': 0, 'cadre': 0, 'public' : 0, 'nbh_sal': 1820, 'taille_ent' : 20, 'tva' : 0,
-                           'activite_C': 0, 'cadre_C': 0, 'public_C' : 0, 'nbh_sal_C': 1820, 'taille_ent_C' : 20, 'tva_C' : 0,
+                           'activite': 0, 'cadre': 0, 'public' : 0, 'nbh_sal': 151.67*12, 'taille_ent' : 20, 'tva' : 0,
+                           'activite_C': 0, 'cadre_C': 0, 'public_C' : 0, 'nbh_sal_C': 151.67*12, 'taille_ent_C' : 20, 'tva_C' : 0,
                            'f2dc' : 0, 'f2tr': 0, 'f3vg':0, 'f4ba':0, 'ISF' : 0, 'caseT': 0, 'caseEKL' : 0
                            }
             
@@ -98,7 +103,6 @@ class Comparison_cases(object):
                 print "Scénario demandé non pris en compte"
                 pdb.set_trace()
             return dic
-        
         
         def _enf(dic):
             dic['npac'] = dic.pop('nb_enf')
@@ -137,8 +141,7 @@ class Comparison_cases(object):
             
         self.ipp2of_input_variables = _dic_corresp('input')
         self.ipp2of_output_variables =  _dic_corresp('output')
-        
-        
+         
     def run_TaxIPP(self):
         do_in = self.paths['do_in']
         do_out = self.paths['do_out']
@@ -175,7 +178,7 @@ class Comparison_cases(object):
                 f.close()
          
         _insert_param_dofile(dic, dic_scenar, do_in, do_out, len_preamb)
-        subprocess.call([self.paths['stata'],  "do", self.paths['do_out']], shell=True)
+        subprocess.call([self.paths['stata'],  "/e", "do", self.paths['do_out']], shell=True)
 
     def run_OF(self):
         '''
@@ -193,7 +196,6 @@ class Comparison_cases(object):
             if str(dic) != str(dic_dta) :
                 print "La base .dta permettant de lancer la simulation OF est absente "
                 print "La base s'en rapprochant le plus a été construite avec les paramètres : ", dic_dta
-                
                 pdb.set_trace()
             else :
                 data = data.drop('dic_scenar', 1)
@@ -247,12 +249,28 @@ class Comparison_cases(object):
                 return data
             
             def _workstate(data):
+                # TODO: titc should be filled in to deal with civil servant  
                 data['chpub'] = 0
                 data.loc[data['public'] == 1, 'chpub'] = 1
                 data.loc[data['public'] == 0, 'chpub' ] = 6
+                # Activité : [0'Actif occupé',  1'Chômeur', 2'Étudiant, élève', 3'Retraité', 4'Autre inactif']), default = 4)
+                # act5 : [0"Salarié",1"Indépendant",2"Chômeur",3"Retraité",4"Inactif"]
+                data['act5'] = 0
+                data.loc[(data['activite'] == 0) & (data['stat_prof'] == 1), 'act5'] = 1
+                data.loc[data['activite'] == 1, 'act5'] = 2
+                data.loc[data['activite'] == 3, 'act5'] = 3
+                data.loc[data['activite'].isin([2,4]), 'act5'] = 4
+                data['statut']  = 8
+                data.loc[data['public'] == 1, 'statut'] = 11
+                # [0"Non renseigné/non pertinent",1"Exonéré",2"Taux réduit",3"Taux plein"]
+                data['csg_rempl'] = 0
+                data.loc[data['csg_exo']==1,'csg_rempl'] = 1 
+                data.loc[data['csg_part']==1,'csg_rempl'] = 2 
+                data.loc[data['csg_tout']==1,'csg_rempl'] = 3 
+                data = data.drop(['csg_tout', 'csg_exo', 'csg_part'], axis=1)
                 return data
-            data.rename(columns= dic_var, inplace=True)
             
+            data.rename(columns= dic_var, inplace=True)
             data["agem"] = 12*data["age"]
             data['quifoy'] = _qui(data, 'foy')
             data['quimen'] = _qui(data, 'men')
@@ -282,63 +300,57 @@ class Comparison_cases(object):
         openfisca_survey = openfisca_survey.fillna(0)
 
         simulation = SurveySimulation()
-        simulation.set_config(year=self.datesim, survey_filename = openfisca_survey)
+        simulation.set_config(year=self.datesim, 
+                              survey_filename = openfisca_survey,
+                              param_file = os.path.join(os.path.dirname(model.PARAM_FILE), 'param_actu_IPP.xml'))
         simulation.set_param()
         simulation.compute()
         
         self.simulation = simulation
-        self.openfisca_outputput = simulation.output_table.table
+        self.openfisca_output = simulation.output_table.table
+#         print self.openfisca_output[["cotpat","salsuperbrut"]] # TODO: DOESN'T WORK AS EXPECTED BiZARRE !!
         return openfisca_survey
 
     
-    def compare(self, THRESHOLD = 50):
+    def compare(self, threshold =  1):
         '''
         Fonction qui comparent les calculs d'OF et et de TaxIPP
         Gestion des outputs
         '''
         dta_output = self.paths['dta_output']
-        ipp_output = read_stata(dta_output).fillna(0)
+        ipp_output = read_stata(dta_output) #.fillna(0)
         dta_input = self.paths['dta_input']
-        ipp_input =  read_stata(dta_input).fillna(0)
-        openfisca_output = self.openfisca_outputput.fillna(0)
+        ipp_input =  read_stata(dta_input) #.fillna(0)
+        openfisca_output = self.openfisca_output
         openfisca_input = self.simulation.input_table.table
         ipp2of_output_variables = self.ipp2of_output_variables
 
-        check_list = ['csg_sal_ded', 'irpp_net_foy', 'af_foys'] 
+        check_list =  ['csg_sal_ded', 'sal_irpp', 'sal_brut']# 'csg_sal_ded'] #, 'irpp_net_foy', 'af_foys']- cotisations salariales : 'css', 'css_nco', 'css_co'
         
         def _conflict_by_entity(ent, of_var, ipp_var, pb_calcul, output1 = openfisca_output, input1 = openfisca_input, output2 = ipp_output):
             if ent == 'ind':
-                output1 = output1[of_var]    
+                output1 = output1.loc[input1['quimen'].isin([0,1]), of_var]   
                 output2 = output2[ipp_var]
+                output2.index =  output1.index
             else :
                 output1 = output1.loc[ input1['qui'+ent] == 0, of_var]    
                 output2 = output2.loc[ input1['qui'+ent] == 0, ipp_var]
                 input1 = input1.loc[ input1['qui'+ent] == 0, :]
-                
-            conflict = ((output2.abs() - output1.abs()).abs() > THRESHOLD)
+            
+            conflict = ((output2.abs() - output1.abs()).abs() > threshold)
             if len(output2[conflict]) != 0: # TODO : a améliorer
                 print "Le calcul de " + of_var + " pose problème : "
-                print output2[conflict].to_string()
-                print output1[conflict].to_string()            
-                print input1.loc[conflict, self.relevant_input_variables()].to_string()
+                from pandas import DataFrame
+                print DataFrame( {"IPP": output2[conflict], "OF": output1[conflict], "diff.": output2[conflict]-output1[conflict].abs()} ).to_string()
+                print input1.loc[conflict[conflict == True].index, self.relevant_input_variables()].to_string()
                 pb_calcul += [of_var]
+#                pdb.set_trace()
         
         pb_calcul = []
-        for ipp_var in ipp2of_output_variables.keys(): #check_list
-            of_var = ipp2of_output_variables[ipp_var]
+        for ipp_var in check_list: # in ipp2of_output_variables.keys(): #
+            of_var = ipp2of_output_variables[ipp_var] 
             entity = self.simulation.prestation_by_name[of_var].entity
-            if entity == 'ind':
-                _conflict_by_entity('ind', of_var, ipp_var, pb_calcul)
-
-            elif entity == "fam":
-                _conflict_by_entity('fam', of_var, ipp_var, pb_calcul)
-
-            elif entity == "foy":
-                _conflict_by_entity('foy', of_var, ipp_var, pb_calcul)
-
-            elif entity == "men":
-                _conflict_by_entity('men', of_var, ipp_var, pb_calcul)
-                
+            _conflict_by_entity(str(entity), of_var, ipp_var, pb_calcul)   
         print len(pb_calcul), pb_calcul
                 
     def run_all(self, run_stata=True):
@@ -359,7 +371,7 @@ class Comparison_cases(object):
         for name, col in simulation.column_by_name.iteritems():
             if not all(dataframe[name] == col._default): 
                 input_variables.append(name)
-        return input_variables
+        return input_variables 
 
     def relevant_output_variables(self):
         simulation = self.simulation
@@ -371,10 +383,10 @@ class Comparison_cases(object):
         return output_variables
 
 def run():
-    param_scenario = {'scenario': 'concubin', 'nb_enf' : 3, 'nb_enf_conj': 1, 'age_enf': [17,8,20], 'rev_max': 1000000, 'part_rev': 0.6}
-    hop = Comparison_cases(2011, param_scenario)
-    hop.run_all(run_stata= False)
-
+    logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+    param_scenario = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':100, 'rev_max': 500000} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
+    hop = Comparison_cases(2013, param_scenario)
+    hop.run_all()#run_stata= False)
 
 if __name__ == '__main__':
     run()
