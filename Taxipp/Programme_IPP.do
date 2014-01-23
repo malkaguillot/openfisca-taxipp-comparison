@@ -32,9 +32,9 @@
 ***********************************
 *******    0.   Preambule   *******
 ***********************************
- 
+set more off
 qui do "P:\TAXIPP\TAXIPP 0.3\4-Analyses\Test OF\3-Programmes\chemins.do"
- 
+
     *^^^^^^^*
     * CHOIX *
     *^^^^^^^*
@@ -311,10 +311,18 @@ do "$dofiles\revbrut.do"
 ************
 ** e.  Imputation de variables necessaires pour la suite */
 qui do "$dofiles\imputations.do"
-gen taille_ent = ${taille_ent_C} if  (conj == 1 | con2 == 1)
-replace taille_ent = ${taille_ent} if ((decl == 1 & couple == 0) | (decl == 1 & marie == 1) | con1 == 1)
-gen tva = ${tva_C} if  (conj == 1 | con2 == 1)
-replace tva = ${tva} if ((decl == 1 & couple == 0) | (decl == 1 & marie == 1) | con1 == 1)
+gen taille_ent = ${taille_ent} if decl == 1
+replace taille_ent = ${taille_ent_C} if  (conj == 1 | con2 == 1)
+replace taille_ent = 0 if pac == 1
+
+gen tva = ${tva} if decl == 1
+replace tva = ${tva_C} if  (conj == 1 | con2 == 1)
+replace tva = 0 if pac == 1
+
+gen activite = ${activite} if decl == 1
+replace activite = ${activite_C} if  (conj == 1 | con2 == 1)
+replace activite = 0 if pac == 2
+
 ** e. FIN **********
  
 ************
@@ -330,12 +338,12 @@ gen tx_csp_pub_0 = 0
 * Supprimer les variables creees mais qui vont etre recalculees
 
 drop *_sim salchom_imp-nbp_seul masse_* smic_h_brut_2006 rfon_irpp
-drop reduc_irpp_foy_tot-loyer_fictif_foy credit_div_foy-reduc_double_dec_foy rpp0_foy-irpp_ds_foy decote_irpp_foy irpp_brut_foy mat stat_prof
+drop reduc_irpp_foy_tot-loyer_fictif_foy credit_div_foy-reduc_double_dec_foy rpp0_foy-irpp_ds_foy decote_irpp_foy irpp_brut_foy mat
 drop sal_irpp_foy nonsal_irpp_foy pension_irpp_foy chom_irpp_foy pens_alim_rec_foy rfr_irpp_concu pac_sum_men age_enf
 
 
 ** g. FIN **********
- 
+
 gen dic_scenar= "$dic_scenar"
 save "$repo\base_IPP_input_${scenario}.dta", replace
  
@@ -344,16 +352,16 @@ save "$repo\base_IPP_input_${scenario}.dta", replace
 ****************************************************
  
 use "$repo\base_IPP_input_${scenario}.dta", clear
-cap drop dic_scenar
- 
-qui    do "$taxipp_encours\3-Programmes\1-cotsoc OF.do"
+cap drop dic_scenar 
+drop if pac == 1
+do "$taxipp_encours\3-Programmes\1-cotsoc OF.do"
 qui    do "$taxipp_encours\3-Programmes\2-irpp OF.do"
 qui do "$progdir\3-revcap.do"
 qui    do "$taxipp_encours\3-Programmes\4-prestations OF.do"
 qui do "$progdir\5-isf.do"
 qui do "$taxipp_encours\3-Programmes\6-bouclier_fiscal OF.do"
  
-drop id_indiv-loyer_verse_men reduc_ds-reduc_irpp 
+drop id_indiv -loyer_verse_men rfon_fictif_cn-reduc_irpp 
  
 save "$repo\base_IPP_output_${scenario}.dta", replace
 
