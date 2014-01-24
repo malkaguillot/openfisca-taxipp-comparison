@@ -77,8 +77,8 @@ class Comparison_cases(object):
             dic_default = { 
                            'scenario' : 'celib', 'nmen': 3, 
                            'nb_enf' : 0, 'nb_enf_conj': 0, 'age_enf': 0,  'rev_max': 100000, 'part_rev': 1, 'loyer_mensuel_menage': 1000,
-                           'activite': 0, 'cadre': 0, 'public' : 0, 'nbh_sal': 151.67*12, 'taille_ent' : 20, 'tva' : 0,
-                           'activite_C': 0, 'cadre_C': 0, 'public_C' : 0, 'nbh_sal_C': 151.67*12, 'taille_ent_C' : 20, 'tva_C' : 0,
+                           'activite': 0, 'cadre': 0, 'public' : 0, 'nbh_sal': 151.67*12, 'taille_ent' : 5, 'tva' : 0,
+                           'activite_C': 0, 'cadre_C': 0, 'public_C' : 0, 'nbh_sal_C': 151.67*12, 'taille_ent_C' : 5, 'tva_C' : 0,
                            'f2dc' : 0, 'f2tr': 0, 'f3vg':0, 'f4ba':0, 'ISF' : 0, 'caseT': 0, 'caseEKL' : 0
                            }
             
@@ -325,7 +325,7 @@ class Comparison_cases(object):
         openfisca_input = self.simulation.input_table.table
         ipp2of_output_variables = self.ipp2of_output_variables
 
-        check_list =  ['csg_sal_ded', 'sal_irpp', 'sal_brut']# 'csg_sal_ded'] #, 'irpp_net_foy', 'af_foys']- cotisations salariales : 'css', 'css_nco', 'css_co'
+        check_list =  ['csg_sal_ded', 'sal_irpp', 'sal_brut', 'csp', 'sal_superbrut']# 'csg_sal_ded'] #, 'irpp_net_foy', 'af_foys']- cotisations salariales : 'css', 'css_nco', 'css_co'
         
         def _conflict_by_entity(ent, of_var, ipp_var, pb_calcul, output1 = openfisca_output, input1 = openfisca_input, output2 = ipp_output):
             if ent == 'ind':
@@ -383,8 +383,8 @@ class Comparison_cases(object):
         return output_variables
 
 def run():
-    logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
-    param_scenario = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':100, 'rev_max': 500000} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    param_scenario = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':100, 'rev_max': 150000, 'activite':1} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
     hop = Comparison_cases(2013, param_scenario)
     hop.run_all()#run_stata= False)
 
