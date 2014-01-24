@@ -311,8 +311,8 @@ do "$dofiles\revbrut.do"
 ************
 ** e.  Imputation de variables necessaires pour la suite */
 qui do "$dofiles\imputations.do"
-gen taille_ent = ${taille_ent} if decl == 1
-replace taille_ent = ${taille_ent_C} if  (conj == 1 | con2 == 1)
+gen taille_ent = (${taille_ent}>=5) if decl == 1
+replace taille_ent = (${taille_ent_C}>=5) if  (conj == 1 | con2 == 1)
 replace taille_ent = 0 if pac == 1
 
 gen tva = ${tva} if decl == 1
