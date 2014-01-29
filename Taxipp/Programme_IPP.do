@@ -316,8 +316,8 @@ gen taille_ent = 20*(${taille_ent}>=5) if decl == 1
 replace taille_ent = 20*(${taille_ent_C}>=5) if  (conj == 1 | con2 == 1)
 replace taille_ent = 0 if pac == 1
 
-gen tva = ${tva} if decl == 1
-replace tva = ${tva_C} if  (conj == 1 | con2 == 1)
+gen tva = ${tva_ent} if decl == 1
+replace tva = ${tva_ent_C} if  (conj == 1 | con2 == 1)
 replace tva = 0 if pac == 1
 
 gen activite = ${activite} if decl == 1
