@@ -76,9 +76,9 @@ class Comparison_cases(object):
             # indicatrices : cadre, public, caseT (parent isolé)
             dic_default = { 
                            'scenario' : 'celib', 'nmen': 3, 
-                           'nb_enf' : 0, 'nb_enf_conj': 0, 'age_enf': 0,  'rev_max': 100000, 'part_rev': 1, 'loyer_mensuel_menage': 1000,
-                           'activite': 0, 'cadre': 0, 'public' : 0, 'nbh_sal': 151.67*12, 'taille_ent' : 5, 'tva' : 0,
-                           'activite_C': 0, 'cadre_C': 0, 'public_C' : 0, 'nbh_sal_C': 151.67*12, 'taille_ent_C' : 5, 'tva_C' : 0,
+                           'nb_enf' : 0, 'nb_enf_conj': 0, 'age_enf': 0,  'rev_max': 100000, 'part_rev': 1, 'loyer_mensuel_menage': 1000, 
+                           'activite': 0, 'cadre': 0, 'public' : 0, 'nbh_sal': 151.67*12, 'taille_ent' : 5, 'tva_ent' : 0,
+                           'activite_C': 0, 'cadre_C': 0, 'public_C' : 0, 'nbh_sal_C': 151.67*12, 'taille_ent_C' : 5, 'tva_ent_C' : 0,
                            'f2dc' : 0, 'f2tr': 0, 'f3vg':0, 'f4ba':0, 'ISF' : 0, 'caseT': 0, 'caseEKL' : 0
                            }
             
@@ -268,6 +268,7 @@ class Comparison_cases(object):
                 data.loc[data['csg_part']==1,'csg_rempl'] = 2 
                 data.loc[data['csg_tout']==1,'csg_rempl'] = 3 
                 data = data.drop(['csg_tout', 'csg_exo', 'csg_part'], axis=1)
+                # Variables donnant le nombre de salariés
                 return data
             
             data.rename(columns= dic_var, inplace=True)
@@ -302,7 +303,7 @@ class Comparison_cases(object):
         simulation = SurveySimulation()
         simulation.set_config(year=self.datesim, 
                               survey_filename = openfisca_survey,
-                              param_file = os.path.join(os.path.dirname(model.PARAM_FILE), 'param_actu_IPP.xml'))
+                              param_file = os.path.join(os.path.dirname(model.PARAM_FILE), 'param.xml'))
         simulation.set_param()
         simulation.compute()
         
@@ -312,7 +313,7 @@ class Comparison_cases(object):
         return openfisca_survey
 
     
-    def compare(self, threshold =  1):
+    def compare(self, threshold = 0.4):
         '''
         Fonction qui comparent les calculs d'OF et et de TaxIPP
         Gestion des outputs
@@ -325,7 +326,11 @@ class Comparison_cases(object):
         openfisca_input = self.simulation.input_table.table
         ipp2of_output_variables = self.ipp2of_output_variables
 
-        check_list =  ['csg_sal_ded', 'sal_irpp', 'sal_brut', 'csp', 'sal_superbrut']# 'csg_sal_ded'] #, 'irpp_net_foy', 'af_foys']- cotisations salariales : 'css', 'css_nco', 'css_co'
+        check_list_sal =  ['csp_exo','csg_sal_ded', 'sal_irpp', 'sal_brut','csp_mo_vt','csp_nco', 'csp_co','vt','mo', 'sal_superbrut', 'sal_net', 'crds_sal', 'csg_sal_nonded', 'ts', 'tehr'] # 'csg_sal_ded'] #, 'irpp_net_foy', 'af_foys']- cotisations salariales : 'css', 'css_nco', 'css_co', 'sal_superbrut' 'csp',
+        check_list_chom =  ['csg_chom_ded', 'chom_irpp', 'chom_brut', 'csg_chom_nonded', 'crds_chom']
+        check_list_ret =  ['csg_pens_ded', 'pension_irpp', 'pension_brut', 'pension_net', 'csg_pens_nonded', 'crds_pens']
+        # Rq : 28/01/2014 : les 3 listes passent les tests avec seuil= 1.4
+        check_list = check_list_sal
         
         def _conflict_by_entity(ent, of_var, ipp_var, pb_calcul, output1 = openfisca_output, input1 = openfisca_input, output2 = ipp_output):
             if ent == 'ind':
@@ -383,8 +388,8 @@ class Comparison_cases(object):
         return output_variables
 
 def run():
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    param_scenario = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':100, 'rev_max': 150000, 'activite':1} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
+    logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
+    param_scenario = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':15, 'rev_max': 300000, 'activite':0} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
     hop = Comparison_cases(2013, param_scenario)
     hop.run_all()#run_stata= False)
 
