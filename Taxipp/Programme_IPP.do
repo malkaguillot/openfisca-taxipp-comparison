@@ -305,7 +305,12 @@ use "$dofiles\base1${scenario}.dta", replace
 ************
 ** d.  Calcul des revenus bruts (sal, nonsal, chom, pension) e partir des revenus imposables */
 global pss ${pss_m}*12
-do "$dofiles\revbrut.do"
+if "${option}" = "salbrut"{
+	do "$dofiles\nonrevbrut.do"
+	}
+if "${option}" = "sali"{
+	do "$dofiles\revbrut.do"
+	}
 ** d. FIN **********
  
 ************
