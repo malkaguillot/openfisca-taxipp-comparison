@@ -32,10 +32,10 @@ import sys
 from numpy import logical_not as not_, array, zeros
 from pandas import read_stata, ExcelFile, DataFrame
 
+import openfisca_france
 from openfisca_core import model
 from openfisca_core.simulations import SurveySimulation
-import openfisca_france
-openfisca_france.init_country()#start_from="brut")
+openfisca_france.init_country()
 
 from CONFIG import paths
 
@@ -75,7 +75,7 @@ class Comparison_cases(object):
             # Activité : [0'Actif occupé',  1'Chômeur', 2'Étudiant, élève', 3'Retraité', 4'Autre inactif']), default = 4)
             # indicatrices : cadre, public, caseT (parent isolé)
             dic_default = { 
-                           'scenario' : 'celib', 'nmen': 3, 
+                           'scenario' : 'celib', 'nmen': 3, 'option' : 'sali',
                            'nb_enf' : 0, 'nb_enf_conj': 0, 'age_enf': 0,  'rev_max': 100000, 'part_rev': 1, 'loyer_mensuel_menage': 1000, 
                            'activite': 0, 'cadre': 0, 'public' : 0, 'nbh_sal': 151.67*12, 'taille_ent' : 5, 'tva_ent' : 0,
                            'activite_C': 0, 'cadre_C': 0, 'public_C' : 0, 'nbh_sal_C': 151.67*12, 'taille_ent_C' : 5, 'tva_ent_C' : 0,
@@ -186,8 +186,8 @@ class Comparison_cases(object):
         input : base .dta issue de l'étape précédente
         '''
         dta_input = self.paths['dta_input']
-        dic = self.dic_scenar
-        
+        dic = self.dic_scenar 
+
         def _test_of_dta(dta_input, dic):
             ''' Cette fonction teste que la table .dta trouvée 
             correspond au bon scénario '''
@@ -263,15 +263,15 @@ class Comparison_cases(object):
                 data['statut']  = 8
                 data.loc[data['public'] == 1, 'statut'] = 11
                 # [0"Non renseigné/non pertinent",1"Exonéré",2"Taux réduit",3"Taux plein"]
-                data['csg_rempl'] = 0
+                data['csg_rempl'] = 3
                 data.loc[data['csg_exo']==1,'csg_rempl'] = 1 
                 data.loc[data['csg_part']==1,'csg_rempl'] = 2 
-                data.loc[data['csg_tout']==1,'csg_rempl'] = 3 
                 data = data.drop(['csg_tout', 'csg_exo', 'csg_part'], axis=1)
                 # Variables donnant le nombre de salariés
                 return data
             
             data.rename(columns= dic_var, inplace=True)
+                
             data["agem"] = 12*data["age"]
             data['quifoy'] = _qui(data, 'foy')
             data['quimen'] = _qui(data, 'men')
@@ -297,9 +297,22 @@ class Comparison_cases(object):
             return data
         
         data_IPP = _test_of_dta(dta_input, dic)
-        openfisca_survey =  _adaptation_var(data_IPP, self.ipp2of_input_variables)
+        var_input = self.ipp2of_input_variables
+        if self.param_scenario['option'] == 'salbrut':
+            del var_input['sal_irpp_old']
+            var_input['sal_brut'] = 'salbrut'
+        openfisca_survey =  _adaptation_var(data_IPP, var_input)
         openfisca_survey = openfisca_survey.fillna(0)
-
+        
+ #       if self.param_scenario['option'] == 'salbrut':
+ #           openfisca_france.init_country(start_from="brut")
+ #           from openfisca_core import model
+ #           from openfisca_core.simulations import SurveySimulation
+ #       else: 
+ #           openfisca_france.init_country()
+ #           from openfisca_core import model
+ #           from openfisca_core.simulations import SurveySimulation
+            
         simulation = SurveySimulation()
         simulation.set_config(year=self.datesim, 
                               survey_filename = openfisca_survey,
@@ -313,7 +326,7 @@ class Comparison_cases(object):
         return openfisca_survey
 
     
-    def compare(self, threshold = 0.4):
+    def compare(self, threshold = 1):
         '''
         Fonction qui comparent les calculs d'OF et et de TaxIPP
         Gestion des outputs
@@ -326,12 +339,22 @@ class Comparison_cases(object):
         openfisca_input = self.simulation.input_table.table
         ipp2of_output_variables = self.ipp2of_output_variables
 
-        check_list_sal =  ['csp_exo','csg_sal_ded', 'sal_irpp', 'sal_brut','csp_mo_vt','csp_nco', 'csp_co','vt','mo', 'sal_superbrut', 'sal_net', 'crds_sal', 'csg_sal_nonded', 'ts', 'tehr'] # 'csg_sal_ded'] #, 'irpp_net_foy', 'af_foys']- cotisations salariales : 'css', 'css_nco', 'css_co', 'sal_superbrut' 'csp',
+        if self.param_scenario['option'] == 'salbrut':
+            del ipp2of_output_variables['sal_brut']
+
+        scenario = self.param_scenario['scenario']
+        act = self.param_scenario['activite']
+        act_conj = self.param_scenario['activite_C']
+        check_list_sal =  ['csp_exo','csg_sal_ded', 'sal_irpp', 'sal_brut','csp_mo_vt','csp_nco', 'csp_co','vt','mo', 'sal_superbrut', 'sal_net', 'crds_sal', 'csg_sal_nonded', 'ts', 'tehr', 'isf_foy', 'irpp_net_foy', 'irpp_brut_foy', 'decote_irpp_foy'] # 'csg_sal_ded'] #, 'irpp_net_foy', 'af_foys']- cotisations salariales : 'css', 'css_nco', 'css_co', 'sal_superbrut' 'csp',
         check_list_chom =  ['csg_chom_ded', 'chom_irpp', 'chom_brut', 'csg_chom_nonded', 'crds_chom']
-        check_list_ret =  ['csg_pens_ded', 'pension_irpp', 'pension_brut', 'pension_net', 'csg_pens_nonded', 'crds_pens']
-        # Rq : 28/01/2014 : les 3 listes passent les tests avec seuil= 1.4
-        check_list = check_list_sal
+        check_list_ret =  ['csg_pens_ded', 'pension_irpp', 'pension_net', 'csg_pens_nonded', 'crds_pens']
+        id_list = act + act_conj
+        lists = {0 : check_list_sal, 1: check_list_sal + check_list_chom, 2: check_list_chom, 3 : check_list_sal + check_list_ret, 4 : check_list_chom + check_list_ret, 6 : check_list_ret}
+        check_list = lists[id_list]
         
+        if (scenario == 'celib') & (act == 3):
+            check_list = check_list_ret
+
         def _conflict_by_entity(ent, of_var, ipp_var, pb_calcul, output1 = openfisca_output, input1 = openfisca_input, output2 = ipp_output):
             if ent == 'ind':
                 output1 = output1.loc[input1['quimen'].isin([0,1]), of_var]   
@@ -389,7 +412,7 @@ class Comparison_cases(object):
 
 def run():
     logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
-    param_scenario = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':15, 'rev_max': 300000, 'activite':0} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
+    param_scenario = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':10, 'rev_max': 150000, 'activite':0} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
     hop = Comparison_cases(2013, param_scenario)
     hop.run_all()#run_stata= False)
 
