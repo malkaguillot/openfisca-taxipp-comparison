@@ -198,7 +198,7 @@ class Comparison_cases(object):
                 print "La base s'en rapprochant le plus a été construite avec les paramètres : ", dic_dta
                 pdb.set_trace()
             else :
-                data = data.drop('dic_scenar', 1)
+                data = data.drop('dic_scenar', 1).sort(['id_foyf', 'id_indiv'], ascending=[True, False])
             return data
         
         def _adaptation_var(data, dic_var):
@@ -302,7 +302,7 @@ class Comparison_cases(object):
             del var_input['sal_irpp_old']
             var_input['sal_brut'] = 'salbrut'
         openfisca_survey =  _adaptation_var(data_IPP, var_input)
-        openfisca_survey = openfisca_survey.fillna(0)
+        openfisca_survey = openfisca_survey.fillna(0)#.sort(['idfoy','noi'])
         
  #       if self.param_scenario['option'] == 'salbrut':
  #           openfisca_france.init_country(start_from="brut")
@@ -332,10 +332,9 @@ class Comparison_cases(object):
         Gestion des outputs
         '''
         dta_output = self.paths['dta_output']
-        ipp_output = read_stata(dta_output) #.fillna(0)
-        dta_input = self.paths['dta_input']
-        ipp_input =  read_stata(dta_input) #.fillna(0)
-        openfisca_output = self.openfisca_output
+        ipp_output = read_stata(dta_output).sort(['id_foyf', 'id_indiv'], ascending=[True, False])
+        openfisca_output = self.openfisca_output 
+        print self.openfisca_output.to_string()
         openfisca_input = self.simulation.input_table.table
         ipp2of_output_variables = self.ipp2of_output_variables
 
@@ -345,16 +344,22 @@ class Comparison_cases(object):
         scenario = self.param_scenario['scenario']
         act = self.param_scenario['activite']
         act_conj = self.param_scenario['activite_C']
-        check_list_sal =  ['csp_exo','csg_sal_ded', 'sal_irpp', 'sal_brut','csp_mo_vt','csp_nco', 'csp_co','vt','mo', 'sal_superbrut', 'sal_net', 'crds_sal', 'csg_sal_nonded', 'ts', 'tehr', 'isf_foy', 'irpp_net_foy', 'irpp_brut_foy', 'decote_irpp_foy'] # 'csg_sal_ded'] #, 'irpp_net_foy', 'af_foys']- cotisations salariales : 'css', 'css_nco', 'css_co', 'sal_superbrut' 'csp',
+
+        check_list_commun = ['isf_foy', 'irpp_net_foy', 'irpp_bar_foy', 'ppe', 'ppe_brut_foy']
+        check_list_minima = ['rsa_foys', 'rsa_act_foys', 'rsa_soc_foys','mv_foys', 'rsa_logt', 'y_rmi_rsa']
+        check_list_af =['paje_foys', 'paje_base_foys', 'paje_clca_foys', 'af_foys', 'af_base', 'af_diff', 'af_maj', 'nenf_prest', 'biact_or_isole']
+        check_list_sal =  ['csp_exo','csg_sal_ded', 'sal_irpp', 'sal_brut','csp_mo_vt','csp_nco', 'csp_co','vt','mo', 'sal_superbrut', 'sal_net', 'crds_sal', 'csg_sal_nonded', 'ts', 'tehr'] # 'csg_sal_ded'] #, 'irpp_net_foy', 'af_foys']- cotisations salariales : 'css', 'css_nco', 'css_co', 'sal_superbrut' 'csp',
+        # 'decote_irpp_foy' : remarque par d'équivalence Taxipp
         check_list_chom =  ['csg_chom_ded', 'chom_irpp', 'chom_brut', 'csg_chom_nonded', 'crds_chom']
         check_list_ret =  ['csg_pens_ded', 'pension_irpp', 'pension_net', 'csg_pens_nonded', 'crds_pens']
         id_list = act + act_conj
         lists = {0 : check_list_sal, 1: check_list_sal + check_list_chom, 2: check_list_chom, 3 : check_list_sal + check_list_ret, 4 : check_list_chom + check_list_ret, 6 : check_list_ret}
         check_list = lists[id_list]
-        
         if (scenario == 'celib') & (act == 3):
             check_list = check_list_ret
-
+            
+        check_list += check_list_commun + check_list_af + check_list_minima
+        
         def _conflict_by_entity(ent, of_var, ipp_var, pb_calcul, output1 = openfisca_output, input1 = openfisca_input, output2 = ipp_output):
             if ent == 'ind':
                 output1 = output1.loc[input1['quimen'].isin([0,1]), of_var]   
@@ -412,8 +417,9 @@ class Comparison_cases(object):
 
 def run():
     logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
-    param_scenario = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':10, 'rev_max': 150000, 'activite':0} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
-    hop = Comparison_cases(2013, param_scenario)
+    param_scenario = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':10, 'rev_max': 150000, 'activite':0} 
+    param_scenario2 = {'scenario': 'marie', 'nb_enf' : 3, 'age_enf': [17,8,12], 'part_rev': 0.75, 'nmen':10, 'rev_max': 150000, 'activite':0} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
+    hop = Comparison_cases(2013, param_scenario2)
     hop.run_all()#run_stata= False)
 
 if __name__ == '__main__':
