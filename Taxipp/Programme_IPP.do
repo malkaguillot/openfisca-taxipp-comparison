@@ -256,7 +256,8 @@ bys id_foyf: replace num_indf=_n
 replace nbh = cond(${activite_C}!=0,0,${nbh_sal}) if con2 == 1 | conj == 1
 replace nbh = cond(${activite}!=0,0,${nbh_sal}) if (decl == 1 & couple == 0) | (decl == 1 & marie == 1) | con1 == 1
 replace nbh_sal = nbh
- 
+gen nbj = $nbj_nonsal
+
 gen rev_temp = 0
 forvalues r = 1/$num{
     global R : word `r' of $rev
