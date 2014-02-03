@@ -211,7 +211,7 @@ forvalues age = 1/$num_age{
 }
 replace age = age_enf if pac == 1
 drop npers_men nadul nenf nenfmaj nenfnaiss nenf02 nenf35 nenf610 nenf1113 nenf1415 nenf1617 nenfmaj1819 nenfmaj20 nenfmaj21plus pac_sum
-byso id_foy :  egen nenfnaiss = total(age<0)
+byso id_foy :  egen nenfnaiss = total(age==-1)
 byso id_foy :  egen nenf02 = total(age>=0 & age < 3)
 byso id_foy :  egen nenf35 = total(age >= 3 & age < 6)
 byso id_foy :  egen nenf610 = total(age>=6 & age < 11)
@@ -222,7 +222,8 @@ byso id_foy :  egen nenfmaj1819 = total(age_enf >=18 & age_enf < 20)
 byso id_foy :  egen nenfmaj20 = total(age_enf == 20)
 byso id_foy :  egen nenfmaj21plus = total(age_enf > 20)
 byso id_foy : egen nenfmaj = total(age_enf>17)
-byso id_foy : egen nenf = total(age_enf<18)
+*byso id_foy : egen nenf = total((age_enf > -1) & (age_enf < 18))
+byso id_foy : egen nenf = total(nenf02+ nenf35 + nenf610 + nenf1113 + nenf1415 + nenf1617)
  
 byso id_foy : egen nadul = total(age >= 18)
 replace npers = nadul + nenf
@@ -299,18 +300,16 @@ replace loyer_conso_men = loyer_verse_men + loyer_fictif_men
 replace naiss = ${annee_sim} - age
 replace seul = 1 if  ${couple}== 0 & ${npac} == 0
 
+
 save "$dofiles\base1${scenario}.dta", replace
 use "$dofiles\base1${scenario}.dta", replace
  
 ************
 ** d.  Calcul des revenus bruts (sal, nonsal, chom, pension) e partir des revenus imposables */
-global pss ${pss_m}*12
-if "${option}" = "salbrut"{
-	do "$dofiles\nonrevbrut.do"
-	}
-if "${option}" = "sali"{
 	do "$dofiles\revbrut.do"
-	}
+
+	* Revenus non salariaux
+
 ** d. FIN **********
  
 ************
@@ -360,6 +359,7 @@ save "$repo\base_IPP_input_${scenario}.dta", replace
 use "$repo\base_IPP_input_${scenario}.dta", clear
 cap drop dic_scenar 
 drop if pac == 1
+
 do "$taxipp_encours\3-Programmes\1-cotsoc OF.do"
 qui    do "$taxipp_encours\3-Programmes\2-irpp OF.do"
 qui do "$progdir\3-revcap.do"
@@ -367,7 +367,7 @@ qui    do "$taxipp_encours\3-Programmes\4-prestations OF.do"
 qui do "$progdir\5-isf.do"
 qui do "$taxipp_encours\3-Programmes\6-bouclier_fiscal OF.do"
  
-drop id_indiv -loyer_verse_men rfon_fictif_cn-reduc_irpp 
+drop id_conj -loyer_verse_men rfon_fictif_cn-reduc_irpp 
  
 save "$repo\base_IPP_output_${scenario}.dta", replace
 
