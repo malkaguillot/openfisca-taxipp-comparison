@@ -77,8 +77,8 @@ class Comparison_cases(object):
             dic_default = { 
                            'scenario' : 'celib', 'nmen': 3, 'option' : 'sali',
                            'nb_enf' : 0, 'nb_enf_conj': 0, 'age_enf': -10,  'rev_max': 100000, 'part_rev': 1, 'loyer_mensuel_menage': 1000, 
-                           'activite': 0, 'cadre': 0, 'public' : 0, 'nbh_sal': 151.67*12, 'taille_ent' : 5, 'tva_ent' : 0, 'nbj_nonsal': 0,
-                           'activite_C': 0, 'cadre_C': 0, 'public_C' : 0, 'nbh_sal_C': 151.67*12, 'taille_ent_C' : 5, 'tva_ent_C' : 0, 'nbj_nonsal_C': 0,
+                           'age' : 38, 'activite': 0, 'cadre': 0, 'public' : 0, 'nbh_sal': 151.67*12, 'taille_ent' : 5, 'tva_ent' : 0, 'nbj_nonsal': 0,
+                           'age_C' : 38,'activite_C': 0, 'cadre_C': 0, 'public_C' : 0, 'nbh_sal_C': 151.67*12, 'taille_ent_C' : 5, 'tva_ent_C' : 0, 'nbj_nonsal_C': 0,
                            'f2dc' : 0, 'f2tr': 0, 'f3vg':0, 'f4ba':0, 'ISF' : 0, 'caseT': 0, 'caseEKL' : 0
                            }
             
@@ -357,9 +357,9 @@ class Comparison_cases(object):
         act = self.param_scenario['activite']
         act_conj = self.param_scenario['activite_C']
 
-        check_list_commun = ['isf_foy', 'irpp_net_foy', 'irpp_bar_foy', 'ppe', 'ppe_brut_foy']
+        check_list_commun = ['isf_foy', 'irpp_net_foy', 'irpp_bar_foy', 'ppe', 'ppe_brut_foy', 'ppe_net_foy',  'irpp_ds_foy'] ## 'decote_irpp_foy',
         check_list_minima = ['rsa_foys', 'rsa_act_foys', 'mv_foys', 'rsa_logt', 'y_rmi_rsa']
-        check_list_af =['paje_foys', 'paje_base_foys', 'paje_clca_foys', 'af_foys', 'af_base', 'af_diff', 'af_maj', 'nenf_prest', 'biact_or_isole']
+        check_list_af =['paje_foys', 'paje_base_foys', 'paje_clca_foys', 'af_foys', 'af_base', 'af_diff', 'af_maj', 'nenf_prest', 'biact_or_isole', 'alf_foys']
         check_list_sal =  ['csp_exo','csg_sal_ded', 'sal_irpp', 'sal_brut','csp_mo_vt','csp_nco', 'csp_co','vt','mo', 'sal_superbrut', 'sal_net', 'crds_sal', 'csg_sal_nonded', 'ts', 'tehr'] # 'csg_sal_ded'] #, 'irpp_net_foy', 'af_foys']- cotisations salariales : 'css', 'css_nco', 'css_co', 'sal_superbrut' 'csp',
         # 'decote_irpp_foy' : remarque par d'équivalence Taxipp
         check_list_chom =  ['csg_chom_ded', 'chom_irpp', 'chom_brut', 'csg_chom_nonded', 'crds_chom']
@@ -429,8 +429,8 @@ class Comparison_cases(object):
 
 def run():
     logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
-    param_scenario = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':10, 'rev_max': 20000, 'activite':0} 
-    param_scenario2 = {'scenario': 'marie', 'nb_enf' : 3, 'age_enf': [17,8,12], 'part_rev': 0.75, 'nmen':10, 'rev_max': 15000, 'activite':0} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
+    param_scenario = {'scenario': 'marie', 'nb_enf' : 0, 'nmen':20, 'rev_max': 25000, 'part_rev': 0.5, 'activite':3, 'age' :75, 'age_C':60, 'activite_C':0 } 
+    param_scenario2 = {'scenario': 'marie', 'nb_enf' : 3, 'age_enf': [17,8,12], 'part_rev': 0.75, 'nmen':10, 'rev_max': 150000, 'activite':0} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
     hop = Comparison_cases(2013, param_scenario)
     hop.run_all()#run_stata= False)
 
