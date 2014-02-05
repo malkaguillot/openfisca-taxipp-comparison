@@ -357,10 +357,10 @@ class Comparison_cases(object):
         act = self.param_scenario['activite']
         act_conj = self.param_scenario['activite_C']
 
-        check_list_commun = ['isf_foy', 'irpp_net_foy', 'irpp_bar_foy', 'ppe', 'ppe_brut_foy', 'ppe_net_foy',  'irpp_ds_foy'] ## 'decote_irpp_foy',
+        check_list_commun = ['isf_foy', 'irpp_net_foy', 'irpp_bar_foy', 'ppe_brut_foy', 'ppe_net_foy',  'irpp_ds_foy'] ## 'decote_irpp_foy',
         check_list_minima = ['rsa_foys', 'rsa_act_foys', 'mv_foys', 'rsa_logt', 'y_rmi_rsa']
-        check_list_af =['paje_foys', 'paje_base_foys', 'paje_clca_foys', 'af_foys', 'af_base', 'af_diff', 'af_maj', 'nenf_prest', 'biact_or_isole', 'alf_foys']
-        check_list_sal =  ['csp_exo','csg_sal_ded', 'sal_irpp', 'sal_brut','csp_mo_vt','csp_nco', 'csp_co','vt','mo', 'sal_superbrut', 'sal_net', 'crds_sal', 'csg_sal_nonded', 'ts', 'tehr'] # 'csg_sal_ded'] #, 'irpp_net_foy', 'af_foys']- cotisations salariales : 'css', 'css_nco', 'css_co', 'sal_superbrut' 'csp',
+        check_list_af =['paje_foys', 'paje_base_foys', 'paje_clca_foys', 'af_foys', 'af_diff', 'af_maj', 'nenf_prest', 'biact_or_isole', 'alf_foys']
+        check_list_sal =  ['csp_exo','csg_sal_ded', 'css', 'css_co', 'css_nco', 'crds_sal', 'csg_sal_nonded', 'sal_irpp', 'sal_brut','csp_mo_vt','csp_nco', 'csp_co','vt','mo', 'sal_superbrut', 'sal_net','ts', 'tehr'] # 'csg_sal_ded'] #, 'irpp_net_foy', 'af_foys']- cotisations salariales : 'css', 'css_nco', 'css_co', 'sal_superbrut' 'csp',
         # 'decote_irpp_foy' : remarque par d'équivalence Taxipp
         check_list_chom =  ['csg_chom_ded', 'chom_irpp', 'chom_brut', 'csg_chom_nonded', 'crds_chom']
         check_list_ret =  ['csg_pens_ded', 'pension_irpp', 'pension_net', 'csg_pens_nonded', 'crds_pens']
@@ -373,11 +373,12 @@ class Comparison_cases(object):
         check_list +=  check_list_minima + check_list_commun + check_list_af
         
         def _conflict_by_entity(ent, of_var, ipp_var, pb_calcul, output1 = openfisca_output, input1 = openfisca_input, output2 = ipp_output):
+            
+            output2.index =  output1[input1['quimen'].isin([0,1])].index
             if ent == 'ind':
                 output1 = output1.loc[input1['quimen'].isin([0,1]), of_var]   
                 output2 = output2[ipp_var]
-                output2.index =  output1.index
-            else :
+            else : 
                 output1 = output1.loc[ input1['qui'+ent] == 0, of_var]    
                 output2 = output2.loc[ input1['qui'+ent] == 0, ipp_var]
                 input1 = input1.loc[ input1['qui'+ent] == 0, :]
@@ -429,9 +430,10 @@ class Comparison_cases(object):
 
 def run():
     logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
-    param_scenario = {'scenario': 'marie', 'nb_enf' : 0, 'nmen':20, 'rev_max': 25000, 'part_rev': 0.5, 'activite':3, 'age' :75, 'age_C':60, 'activite_C':0 } 
-    param_scenario2 = {'scenario': 'marie', 'nb_enf' : 3, 'age_enf': [17,8,12], 'part_rev': 0.75, 'nmen':10, 'rev_max': 150000, 'activite':0} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
-    hop = Comparison_cases(2013, param_scenario)
+    param_scenario0 = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':20, 'rev_max': 25000, 'activite':0}
+    param_scenario1 = {'scenario': 'marie', 'nb_enf' : 0, 'nmen':20, 'rev_max': 20000, 'part_rev': 0.5, 'activite':0,  'activite_C':0 } #'age' :75, 'age_C':60,
+    param_scenario2 = {'scenario': 'marie', 'nb_enf' : 3, 'age_enf': [11,8,12], 'part_rev': 0.75, 'nmen':10, 'rev_max': 150000, 'activite':0} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
+    hop = Comparison_cases(2013, param_scenario2)
     hop.run_all()#run_stata= False)
 
 if __name__ == '__main__':
