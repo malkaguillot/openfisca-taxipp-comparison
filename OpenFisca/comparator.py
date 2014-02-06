@@ -178,8 +178,9 @@ class Comparison_cases(object):
                 f.close()
          
         _insert_param_dofile(dic, dic_scenar, do_in, do_out, len_preamb)
-        subprocess.call([self.paths['stata'],  "/e", "do", self.paths['do_out']], shell=True)
-
+        #subprocess.call([self.paths['stata'],  "/e", "do", self.paths['do_out']], shell=True)
+        subprocess.call([self.paths['stata'],  "do", self.paths['do_out']], shell=True)
+        
     def run_OF(self):
         '''
         Lance le calculs sur OF à partir des cas-types issues de TaxIPP
@@ -267,7 +268,6 @@ class Comparison_cases(object):
                 data.loc[data['csg_exo']==1,'csg_rempl'] = 1 
                 data.loc[data['csg_part']==1,'csg_rempl'] = 2 
                 data = data.drop(['csg_tout', 'csg_exo', 'csg_part'], axis=1)
-                # Variables donnant le nombre de salariés
                 return data
             
             def _var_to_ppe(data):
@@ -282,6 +282,15 @@ class Comparison_cases(object):
                 data.loc[(data['stat_prof'] == 1) & (data['nbj'] >= 360), 'ppe_tp_ns'] = 1
                 return data
                 
+            def _var_to_pfam(data):
+                data['inactif'] = 0
+                data.loc[(data['activite'] != 0), 'inactif'] = 1
+                data['partiel1'] = 0
+                data.loc[(data['nbh']/12 <= 77) & (data['nbh']/12 > 0) , 'partiel1'] = 1
+                data['partiel2'] = 0
+                data.loc[(data['nbh']/12 <= 151) & (data['nbh']/12 > 77), 'partiel2'] = 1
+                return data
+            
             data.rename(columns= dic_var, inplace=True)
                 
             data["agem"] = 12*data["age"]
@@ -296,7 +305,7 @@ class Comparison_cases(object):
             data = _workstate(data)
             data["caseN"] = _compl(data["caseN"])
             data = _var_to_ppe(data)
-            doubt = ["rfin"]
+            data = _var_to_pfam(data)
             
             not_in_OF = [ "p1", "nbh", "nbh_sal", "loge_proprio",  "loge_locat",  "loge_autr", "loyer_fictif",  "loyer_verse",  "loyer_marche", "pens_alim_ver_foy", "sal_brut",  "sal_h_brut",
                          "bail_prive",  "bail_pers_phys",  "loyer_conso",  "proprio_men",  "locat_men", "loge_men",  "proprio_empr_men", "loyer_fictif_men", 
@@ -359,19 +368,19 @@ class Comparison_cases(object):
 
         check_list_commun = ['isf_foy', 'irpp_net_foy', 'irpp_bar_foy', 'ppe_brut_foy', 'ppe_net_foy',  'irpp_ds_foy'] ## 'decote_irpp_foy',
         check_list_minima = ['rsa_foys', 'rsa_act_foys', 'mv_foys', 'rsa_logt', 'y_rmi_rsa']
-        check_list_af =['paje_foys', 'paje_base_foys', 'paje_clca_foys', 'af_foys', 'af_diff', 'af_maj', 'nenf_prest', 'biact_or_isole', 'alf_foys']
+        check_list_af =['paje_foys', 'paje_base_foys', 'paje_clca_foys', 'af_foys',  'nenf_prest', 'biact_or_isole', 'alf_foys', 'ars_foys', 'asf_foys','api', 'apje_foys'] #'af_diff', 'af_maj',
         check_list_sal =  ['csp_exo','csg_sal_ded', 'css', 'css_co', 'css_nco', 'crds_sal', 'csg_sal_nonded', 'sal_irpp', 'sal_brut','csp_mo_vt','csp_nco', 'csp_co','vt','mo', 'sal_superbrut', 'sal_net','ts', 'tehr'] # 'csg_sal_ded'] #, 'irpp_net_foy', 'af_foys']- cotisations salariales : 'css', 'css_nco', 'css_co', 'sal_superbrut' 'csp',
         # 'decote_irpp_foy' : remarque par d'équivalence Taxipp
         check_list_chom =  ['csg_chom_ded', 'chom_irpp', 'chom_brut', 'csg_chom_nonded', 'crds_chom']
         check_list_ret =  ['csg_pens_ded', 'pension_irpp', 'pension_net', 'csg_pens_nonded', 'crds_pens']
+        
         id_list = act + act_conj
         lists = {0 : check_list_sal, 1: check_list_sal + check_list_chom, 2: check_list_chom, 3 : check_list_sal + check_list_ret, 4 : check_list_chom + check_list_ret, 6 : check_list_ret}
         check_list = lists[id_list]
         if (scenario == 'celib') & (act == 3):
             check_list = check_list_ret
-            
-        check_list +=  check_list_minima + check_list_commun + check_list_af
         
+        check_list +=  check_list_minima + check_list_commun + check_list_af
         def _conflict_by_entity(ent, of_var, ipp_var, pb_calcul, output1 = openfisca_output, input1 = openfisca_input, output2 = ipp_output):
             
             output2.index =  output1[input1['quimen'].isin([0,1])].index
@@ -398,7 +407,7 @@ class Comparison_cases(object):
             entity = self.simulation.prestation_by_name[of_var].entity
             _conflict_by_entity(str(entity), of_var, ipp_var, pb_calcul)   
         print len(pb_calcul), pb_calcul
-                
+        
     def run_all(self, run_stata=True):
         self.work_on_param()
         self.def_ipp2of_dic()
@@ -430,10 +439,11 @@ class Comparison_cases(object):
 
 def run():
     logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
-    param_scenario0 = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':20, 'rev_max': 25000, 'activite':0}
+    param_scenario0 = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':20, 'rev_max': 55000, 'activite':0, 'public' : 1}
     param_scenario1 = {'scenario': 'marie', 'nb_enf' : 0, 'nmen':20, 'rev_max': 20000, 'part_rev': 0.5, 'activite':0,  'activite_C':0 } #'age' :75, 'age_C':60,
-    param_scenario2 = {'scenario': 'marie', 'nb_enf' : 3, 'age_enf': [11,8,12], 'part_rev': 0.75, 'nmen':10, 'rev_max': 150000, 'activite':0} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
-    hop = Comparison_cases(2013, param_scenario2)
+    param_scenario2 = {'scenario': 'concubin', 'nb_enf' : 3, 'age_enf': [17,8,12], 'nb_enf_conj': 1,  'part_rev': 0.75, 'nmen':10, 'rev_max': 15000, 'activite':0, 'activite_C': 0} 
+    param_scenario3 = {'scenario': 'concubin', 'nb_enf' : 5, 'age_enf': [1,16,12, 18,0], 'part_rev': 0.75, 'nmen':10, 'rev_max': 150000, 'activite':0, 'activite_C': 0} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
+    hop = Comparison_cases(2013, param_scenario0)
     hop.run_all()#run_stata= False)
 
 if __name__ == '__main__':
