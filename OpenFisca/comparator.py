@@ -188,7 +188,18 @@ class Comparison_cases(object):
         '''
         dta_input = self.paths['dta_input']
         dic = self.dic_scenar 
-
+        
+        if self.param_scenario['option'] == 'salbrut':
+            import openfisca_france
+            from openfisca_core import model
+            from openfisca_core.simulations import SurveySimulation
+            openfisca_france.init_country(start_from = "brut")
+        else : 
+            import openfisca_france
+            from openfisca_core import model
+            from openfisca_core.simulations import SurveySimulation
+            openfisca_france.init_country()
+            
         def _test_of_dta(dta_input, dic):
             ''' Cette fonction teste que la table .dta trouvée 
             correspond au bon scénario '''
@@ -373,16 +384,19 @@ class Comparison_cases(object):
         # 'decote_irpp_foy' : remarque par d'équivalence Taxipp
         check_list_chom =  ['csg_chom_ded', 'chom_irpp', 'chom_brut', 'csg_chom_nonded', 'crds_chom']
         check_list_ret =  ['csg_pens_ded', 'pension_irpp', 'pension_net', 'csg_pens_nonded', 'crds_pens']
-        
+        if self.param_scenario['option'] == 'salbrut':
+            check_list_sal.remove('sal_brut')
+            
         id_list = act + act_conj
         lists = {0 : check_list_sal, 1: check_list_sal + check_list_chom, 2: check_list_chom, 3 : check_list_sal + check_list_ret, 4 : check_list_chom + check_list_ret, 6 : check_list_ret}
         check_list = lists[id_list]
+        
         if (scenario == 'celib') & (act == 3):
             check_list = check_list_ret
-        
         check_list +=  check_list_minima + check_list_commun + check_list_af
+
         def _conflict_by_entity(ent, of_var, ipp_var, pb_calcul, output1 = openfisca_output, input1 = openfisca_input, output2 = ipp_output):
-            
+
             output2.index =  output1[input1['quimen'].isin([0,1])].index
             if ent == 'ind':
                 output1 = output1.loc[input1['quimen'].isin([0,1]), of_var]   
@@ -396,9 +410,11 @@ class Comparison_cases(object):
             if len(output2[conflict]) != 0: # TODO : a améliorer
                 print "Le calcul de " + of_var + " pose problème : "
                 from pandas import DataFrame
+                #print DataFrame( {"IPP": output2, "OF": output1, "diff.": output2-output1.abs()} ).to_string()
                 print DataFrame( {"IPP": output2[conflict], "OF": output1[conflict], "diff.": output2[conflict]-output1[conflict].abs()} ).to_string()
                 print input1.loc[conflict[conflict == True].index, self.relevant_input_variables()].to_string()
                 pb_calcul += [of_var]
+                
 #                pdb.set_trace()
         
         pb_calcul = []
@@ -418,7 +434,6 @@ class Comparison_cases(object):
             self.run_TaxIPP()
         self.run_OF()
         self.compare()
-        
     def relevant_input_variables(self):
         simulation = self.simulation
         dataframe = simulation.input_table.table
@@ -439,11 +454,11 @@ class Comparison_cases(object):
 
 def run():
     logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
-    param_scenario0 = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':20, 'rev_max': 55000, 'activite':0, 'public' : 1}
-    param_scenario1 = {'scenario': 'marie', 'nb_enf' : 0, 'nmen':20, 'rev_max': 20000, 'part_rev': 0.5, 'activite':0,  'activite_C':0 } #'age' :75, 'age_C':60,
-    param_scenario2 = {'scenario': 'concubin', 'nb_enf' : 3, 'age_enf': [17,8,12], 'nb_enf_conj': 1,  'part_rev': 0.75, 'nmen':10, 'rev_max': 15000, 'activite':0, 'activite_C': 0} 
-    param_scenario3 = {'scenario': 'concubin', 'nb_enf' : 5, 'age_enf': [1,16,12, 18,0], 'part_rev': 0.75, 'nmen':10, 'rev_max': 150000, 'activite':0, 'activite_C': 0} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
-    hop = Comparison_cases(2013, param_scenario0)
+    param_scenario0 = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':10, 'rev_max': 12*4000, 'activite':0}#, 'option': 'salbrut', , 'public' : 1
+    param_scenario1 = {'scenario': 'marie', 'nb_enf' : 0, 'nmen':20, 'rev_max': 20000, 'part_rev': 0.75, 'activite':0,  'activite_C':0 } #'age' :75, 'age_C':60,
+    param_scenario2 = {'scenario': 'marie', 'nb_enf' : 3, 'age_enf': [17,8,12],   'part_rev': 0.75, 'nmen':10, 'rev_max': 50000, 'activite':0, 'activite_C': 0} 
+    param_scenario3 = {'scenario': 'concubin', 'nb_enf' : 5, 'age_enf': [1,16,12,18,0], 'part_rev': 0.75, 'nmen':10, 'rev_max': 150000, 'activite':0, 'activite_C': 0} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
+    hop = Comparison_cases(2013, param_scenario2)
     hop.run_all()#run_stata= False)
 
 if __name__ == '__main__':
