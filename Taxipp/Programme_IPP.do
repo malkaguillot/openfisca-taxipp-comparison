@@ -362,13 +362,13 @@ drop sal_irpp_foy nonsal_irpp_foy pension_irpp_foy chom_irpp_foy pens_alim_rec_f
 ** g. FIN **********
 
 gen dic_scenar= "$dic_scenar"
-save "$repo\base_IPP_input_${scenario}.dta", replace
+save "$repo\base_IPP_input_${scenario}_${date}.dta", replace
  
 ****************************************************
 *****  2.    Simulation : ne tourne qu'e l'IPP  *****
 ****************************************************
  
-use "$repo\base_IPP_input_${scenario}.dta", clear
+use "$repo\base_IPP_input_${scenario}_${date}.dta", clear
 cap drop dic_scenar 
 drop if pac == 1
 
@@ -381,5 +381,5 @@ qui do "$taxipp_encours\3-Programmes\6-bouclier_fiscal OF.do"
  
 drop id_conj -loyer_verse_men rfon_fictif_cn-reduc_irpp 
  
-save "$repo\base_IPP_output_${scenario}.dta", replace
+save "$repo\base_IPP_output_${scenario}_${date}.dta", replace
 
