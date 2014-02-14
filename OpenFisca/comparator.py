@@ -78,7 +78,7 @@ class Comparison_cases(object):
             # indicatrices : cadre, public, caseT (parent isolé)
             dic_default = { 
                            'scenario' : 'celib', 'nmen': 3, 'option' : 'sali',
-                           'nb_enf' : 0, 'nb_enf_conj': 0, 'age_enf': -10,  'rev_max': 100000, 'part_rev': 1, 'loyer_mensuel_menage': 1000, 
+                           'nb_enf' : 0, 'nb_enf_C': 0, 'age_enf': -10,  'rev_max': 100000, 'part_rev': 1, 'loyer_mensuel_menage': 1000, 
                            'age' : 38, 'activite': 0, 'cadre': 0, 'public' : 0, 'nbh_sal': 151.67*12, 'taille_ent' : 5, 'tva_ent' : 0, 'nbj_nonsal': 0,
                            'age_C' : 38,'activite_C': 0, 'cadre_C': 0, 'public_C' : 0, 'nbh_sal_C': 151.67*12, 'taille_ent_C' : 5, 'tva_ent_C' : 0, 'nbj_nonsal_C': 0,
                            'f2dc' : 0, 'f2tr': 0, 'f3vg':0, 'f4ba':0, 'ISF' : 0, 'caseT': 0, 'caseEKL' : 0
@@ -108,7 +108,7 @@ class Comparison_cases(object):
         
         def _enf(dic):
             dic['npac'] = dic.pop('nb_enf')
-            dic['npac_C'] = dic.pop('nb_enf_conj')
+            dic['npac_C'] = dic.pop('nb_enf_C')
             if dic['npac'] !=0:
                 try: 
                     assert dic['npac'] == len(dic['age_enf'])
@@ -164,8 +164,8 @@ class Comparison_cases(object):
                 f.close()
          
         _insert_param_dofile(dic, dic_scenar, do_in, do_out, len_preamb)
-        #subprocess.call([self.paths['stata'],  "/e", "do", self.paths['do_out']], shell=True)
-        subprocess.call([self.paths['stata'],  "do", self.paths['do_out']], shell=True)
+        subprocess.call([self.paths['stata'],  "/e", "do", self.paths['do_out']], shell=True)
+        #subprocess.call([self.paths['stata'],  "do", self.paths['do_out']], shell=True)
   
     def run_all(self, run_stata=True):
         self.work_on_param()
@@ -193,16 +193,6 @@ class Comparison_cases(object):
                 output_variables.append(name)
         return output_variables
 
-def run():
-    logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
-    param_scenario0 = {'scenario': 'celib', 'date':  time.strftime('%d-%m-%y %Hh%M',time.localtime()), 'nb_enf' : 0, 'nmen':10, 'rev_max': 12*4000, 'activite':0, 'option': 'sali'}#, 'option': 'salbrut', , 'public' : 1
-    param_scenario1 = {'scenario': 'concubin', 'date':  time.strftime('%d-%m-%y %Hh%M',time.localtime()), 'nb_enf' : 0, 'nmen':20, 'rev_max': 20000, 'part_rev': 0.75, 'activite':0,  'activite_C':0, 'option': 'sali'} #'age' :75, 'age_C':60,
-    param_scenario2 = {'scenario': 'concubin', 'date':  time.strftime('%d-%m-%y %Hh%M',time.localtime()), 'nb_enf' : 3, 'age_enf': [17,8,12],   'part_rev': 0.75, 'nmen':10, 'rev_max': 50000, 'activite':0, 'activite_C': 0, 'option': 'sali'} 
-    param_scenario3 = {'scenario': 'concubin', 'date':  time.strftime('%d-%m-%y %Hh%M',time.localtime()), 'nb_enf' : 5, 'age_enf': [1,16,12,18,0], 'part_rev': 0.75, 'nmen':10, 'rev_max': 150000, 'activite':0, 'activite_C': 0, 'option': 'sali'} #'age_enf': [17,8,12], 'nb_enf_conj': 1, 'part_rev': 0.6, 'activite': 1, 'activite_C': 1}
-    param_scenario_cap1 = {'scenario': 'celib', 'nb_enf' : 0, 'nmen':1, 'rev_max': 0,'activite':0,'f4ba' : 40000} #'f2dc' : 0, 'f2tr': 0, 'f3vg':0, 'f4ba':0, 'ISF' : 0
-    hop = Comparison_cases(2013, param_scenario2)
-    hop.run_all()#run_stata= False)
-
 def dic_ipp2of():
     ''' 
     Création du dictionnaire dont les clefs sont les noms des variables IPP
@@ -220,7 +210,7 @@ def dic_ipp2of():
     ipp2of_output_variables =  _dic_corresp('output')
     return ipp2of_input_variables, ipp2of_output_variables
 
-def compare(path_dta_output, openfisca_output, dic_ipp2of_output_variables, param_scenario, simulation, threshold = 1, verbose = True):
+def compare(path_dta_output, openfisca_output, dic_ipp2of_output_variables, param_scenario, simulation, threshold = 1.5, verbose = True):
     '''
     Fonction qui comparent les calculs d'OF et et de TaxIPP
     Gestion des outputs
@@ -235,7 +225,10 @@ def compare(path_dta_output, openfisca_output, dic_ipp2of_output_variables, para
 
     scenario = param_scenario['scenario']
     act = param_scenario['activite']
-    act_conj = param_scenario['activite_C']
+    if 'activite_C' in param_scenario.items():
+        act_conj = param_scenario['activite_C']
+    else:
+        act_conj = 0
 
     check_list_commun = ['isf_foy', 'irpp_net_foy', 'irpp_bar_foy', 'ppe_brut_foy', 'ppe_net_foy',  'irpp_ds_foy'] ## 'decote_irpp_foy',
     check_list_minima = ['rsa_foys', 'rsa_act_foys', 'mv_foys', 'rsa_logt', 'y_rmi_rsa']
@@ -285,7 +278,8 @@ def compare(path_dta_output, openfisca_output, dic_ipp2of_output_variables, para
                 relevant_variables = _relevant_input_variables(simulation)
                 print input1.loc[conflict[conflict == True].index, relevant_variables].to_string()
             pb_calcul += [of_var]
-            
+#        if of_var == 'taxes_sal':
+#            print "taxes_sal", output1.to_string 
 #                pdb.set_trace()
     
     pb_calcul = []
@@ -426,6 +420,8 @@ def build_input_OF(data, dic_var):
         data.loc[data['csg_exo']==1,'csg_rempl'] = 1 
         data.loc[data['csg_part']==1,'csg_rempl'] = 2 
         data = data.drop(['csg_tout', 'csg_exo', 'csg_part'], axis=1)
+        #data['ebic_impv'] = 20000
+        data['exposition_accident'] = 0
         return data
     
     def _var_to_ppe(data):
@@ -442,7 +438,9 @@ def build_input_OF(data, dic_var):
         
     def _var_to_pfam(data):
         data['inactif'] = 0
-        data.loc[(data['activite'] != 0), 'inactif'] = 1
+        data.loc[(data['activite'].isin([3,4,5,6])), 'inactif'] = 1
+        data.loc[(data['activite']==1) & (data['choi']==0), 'inactif'] = 1
+        data.loc[(data['activite']==0) & (data['sali']==0), 'inactif'] = 1
         data['partiel1'] = 0
         data.loc[(data['nbh']/12 <= 77) & (data['nbh']/12 > 0) , 'partiel1'] = 1
         data['partiel2'] = 0
@@ -468,13 +466,25 @@ def build_input_OF(data, dic_var):
     not_in_OF = [ "p1", "nbh", "nbh_sal", "loge_proprio",  "loge_locat",  "loge_autr", "loyer_fictif",  "loyer_verse",  "loyer_marche", "pens_alim_ver_foy", "sal_brut",  "sal_h_brut",
                  "bail_prive",  "bail_pers_phys",  "loyer_conso",  "proprio_men",  "locat_men", "loge_men",  "proprio_empr_men", "loyer_fictif_men", 
                  "bail_prive_men",  "bail_pers_phys_men", "loyer_marche_men", "loyer_conso_men",
-                  "ba_irpp",  "bic_irpp",  "bnc_irpp",  "nonsalexo_irpp", "nonsal_brut_cn", "nonsal_brut_cn_foy", "nonsal_brut", "nonsal_h_brut"] # variables non-salariés
+                    "nonsalexo_irpp", "nonsal_brut_cn", "nonsal_brut_cn_foy", "nonsal_brut", "nonsal_h_brut"] # variables non-salariés, "ba_irpp",  "bic_irpp",  "bnc_irpp",
     other_vars_to_drop = ["couple", "decl", "conj", "pac", "proprio_empr", "proprio", "locat", "nonsal_irpp", "nadul", 
                   "loge", "marie", "change", "pondv", "concu", "cohab", "nenf_concu", "num_indf", "npers", "age_conj", "n_foy_men", "public"]
     vars_to_drop = [var for var in (other_vars_to_drop + not_in_OF) if var in data.columns]            
     data = data.drop(vars_to_drop, axis=1)
     data.rename(columns={"id_conj" : "conj"}, inplace = True)
     return data
+
+def run():
+    logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
+    param_scenario0 = {'scenario': 'celib', 'date':  time.strftime('%d-%m-%y %Hh',time.localtime()), 'nb_enf' : 0, 'nmen':10, 'rev_max': 12*4000, 'activite':0, 'option': 'sali', 'cadre': 0}#, 'option': 'salbrut', , 'public' : 1
+    param_scenario1 = {'scenario': 'concubin', 'date':  time.strftime('%d-%m-%y %Hh',time.localtime()), 'nb_enf' : 0, 'nmen':20, 'rev_max': 20000, 'part_rev': 0.75, 'activite':0,  'activite_C':1,'option': 'sali'} #'age' :75, 'age_C':60,
+    param_scenario2 = {'scenario': 'concubin', 'date':  time.strftime('%d-%m-%y %Hh',time.localtime()), 'nb_enf' : 3, 'nb_enf_C':1, 'age_enf': [17,8,2],   'part_rev': 0.75, 'nmen':10, 'rev_max': 50000, 'activite':1, 'activite_C': 0, 'option': 'sali'} 
+    param_scenario3 = {'scenario': 'concubin', 'date':  time.strftime('%d-%m-%y %Hh',time.localtime()), 'nb_enf' : 5, 'age_enf': [1,16,12,17,0], 'part_rev': 0.75, 'nmen':10, 'rev_max': 150000, 'activite':0, 'cadre': 1, 'activite_C': 1, 'cadre_C': 1, 'option': 'sali'} 
+    param_scenario_cap1 = {'scenario': 'celib', 'date':  time.strftime('%d-%m-%y %Hh',time.localtime()), 'nb_enf' : 0, 'nmen':10, 'rev_max': 10000,'activite':0,'f4dc' : 40000} #'f2dc' : 0, 'f2tr': 0, 'f3vg':0, 'f4ba':0, 'ISF' : 0
+    
+    hop = Comparison_cases(2013, param_scenario3)
+    hop.run_all()#run_stata= False)
+    
 
 if __name__ == '__main__':
     run()
