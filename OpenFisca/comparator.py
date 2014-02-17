@@ -219,12 +219,15 @@ def compare(path_dta_output, openfisca_output, dic_ipp2of_output_variables, para
     dta_output = path_dta_output
     ipp_output = read_stata(dta_output).sort(['id_foyf', 'id_indiv'], ascending=[True, False])
     ipp2of_output_variables = dic_ipp2of_output_variables
-
-    if param_scenario['option'] == 'salbrut':
-        del ipp2of_output_variables['sal_brut']
+    if 'salbrut' in param_scenario.items() :
+        if param_scenario['option'] == 'salbrut':
+            del ipp2of_output_variables['sal_brut']
 
     scenario = param_scenario['scenario']
-    act = param_scenario['activite']
+    if 'activite' in param_scenario.items():
+        act = param_scenario['activite']
+    else:
+        act = 0
     if 'activite_C' in param_scenario.items():
         act_conj = param_scenario['activite_C']
     else:
@@ -237,10 +240,11 @@ def compare(path_dta_output, openfisca_output, dic_ipp2of_output_variables, para
     # 'decote_irpp_foy' : remarque par d'équivalence Taxipp
     check_list_chom =  ['csg_chom_ded', 'chom_irpp', 'chom_brut', 'csg_chom_nonded', 'crds_chom']
     check_list_ret =  ['csg_pens_ded', 'pension_irpp', 'pension_net', 'csg_pens_nonded', 'crds_pens']
-    check_list_cap = ['isf_foy','csg_patr_foy','crds_patr_foy','csk_patr_foy','csg_plac_foy','crds_plac_foy','csk_plac_foy'] 
+    check_list_cap = ['isf_foy', 'isf_brut_foy', 'isf_net_foy', 'csg_patr_foy','crds_patr_foy','csk_patr_foy','csg_plac_foy','crds_plac_foy','csk_plac_foy'] 
     
-    if param_scenario['option'] == 'salbrut':
-        check_list_sal.remove('sal_brut')
+    if 'salbrut' in param_scenario.items() :
+        if param_scenario['option'] == 'salbrut':
+            check_list_sal.remove('sal_brut')
         
     id_list = act + act_conj
     lists = {0 : check_list_sal, 1: check_list_sal + check_list_chom, 2: check_list_chom, 3 : check_list_sal + check_list_ret, 4 : check_list_chom + check_list_ret, 6 : check_list_ret}
@@ -327,13 +331,19 @@ def run_OF(dic_input, path_dta_input, param_scenario = None, dic = None, datesim
         datesim = dict_scenar['datesim']
         param_scenario = dict_scenar
         
-    if param_scenario['option'] == 'salbrut':
-        import openfisca_france
-        from openfisca_core import model
-        from openfisca_core.simulations import SurveySimulation
-        openfisca_france.init_country(start_from = "brut")
-        del dic_input['sal_irpp_old']
-        dic_input['sal_brut'] = 'salbrut'
+    if 'salbrut' in param_scenario.items() :
+        if param_scenario['option'] == 'salbrut':
+            import openfisca_france
+            from openfisca_core import model
+            from openfisca_core.simulations import SurveySimulation
+            openfisca_france.init_country(start_from = "brut")
+            del dic_input['sal_irpp_old']
+            dic_input['sal_brut'] = 'salbrut'
+        else : 
+            import openfisca_france
+            from openfisca_core import model
+            from openfisca_core.simulations import SurveySimulation
+            openfisca_france.init_country()
         
     else : 
         import openfisca_france
@@ -481,8 +491,8 @@ def run():
     param_scenario2 = {'scenario': 'concubin', 'date':  time.strftime('%d-%m-%y %Hh',time.localtime()), 'nb_enf' : 3, 'nb_enf_C':1, 'age_enf': [17,8,2],   'part_rev': 0.75, 'nmen':10, 'rev_max': 50000, 'activite':1, 'activite_C': 0, 'option': 'sali'} 
     param_scenario3 = {'scenario': 'concubin', 'date':  time.strftime('%d-%m-%y %Hh',time.localtime()), 'nb_enf' : 5, 'age_enf': [1,16,12,17,0], 'part_rev': 0.75, 'nmen':10, 'rev_max': 150000, 'activite':0, 'cadre': 1, 'activite_C': 1, 'cadre_C': 1, 'option': 'sali'} 
     param_scenario_cap1 = {'scenario': 'celib', 'date':  time.strftime('%d-%m-%y %Hh',time.localtime()), 'nb_enf' : 0, 'nmen':10, 'rev_max': 10000,'activite':0,'f4dc' : 40000} #'f2dc' : 0, 'f2tr': 0, 'f3vg':0, 'f4ba':0, 'ISF' : 0
-    
-    hop = Comparison_cases(2013, param_scenario3)
+    param_scenario_isf = {'scenario': 'celib', 'date':  time.strftime('%d-%m-%y %Hh',time.localtime()), 'nb_enf': 0, 'nmen':10, 'rev_max': 12*4000, 'actifnetIS' : 1500000}
+    hop = Comparison_cases(2013, param_scenario_isf)
     hop.run_all()#run_stata= False)
     
 
