@@ -215,7 +215,7 @@ forvalues age = 1/$num_age{
 }
 replace age = age_enf if pac == 1
 drop npers_men nadul nenf nenfmaj nenfnaiss nenf02 nenf35 nenf610 nenf1113 nenf1415 nenf1617 nenfmaj1819 nenfmaj20 nenfmaj21plus pac_sum
-byso id_foy :  egen nenfnaiss = total(age==-1)
+byso id_foy :  egen nenfnaiss = total(age==0)
 byso id_foy :  egen nenf02 = total(age>=0 & age < 3)
 byso id_foy :  egen nenf35 = total(age >= 3 & age < 6)
 byso id_foy :  egen nenf610 = total(age>=6 & age < 11)
